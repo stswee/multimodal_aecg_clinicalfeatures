@@ -17,6 +17,10 @@ This script:
   - Supports limiting number of processed records (for debugging)
 
 Metadata includes all processing times, output file size, duration, status, etc.
+
+Notes:
+-----
+For 936 patients in MUSIC study, preprocessing the ECGs into takes ~75min
 """
 
 import os
