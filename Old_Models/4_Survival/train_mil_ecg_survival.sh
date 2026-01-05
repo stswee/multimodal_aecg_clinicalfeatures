@@ -12,7 +12,7 @@ set -e
 # ======================================================
 
 # tmux session name
-SESSION_NAME="mil_survival_fold4_emb256_SCD"
+SESSION_NAME="mil_survival_fold4_emb256_time_SCD"
 
 # Script location
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -22,8 +22,8 @@ PYTHON_SCRIPT="${SCRIPT_DIR}/train_mil_ecg_survival.py"
 VAL_FOLD=4
 
 SEGMENTS_DIR="../../../../local3/sswee/music_download/physionet.org/files/music-sudden-cardiac-death/1.0.1/preprocessed_segments"
-CSV_PATH="../../../../local3/sswee/music_download/physionet.org/files/music-sudden-cardiac-death/1.0.1/music_patient_folds_5cv_survival_SCD.csv"
-OUTPUT_DIR="../../../../local3/sswee/music_download/physionet.org/files/music-sudden-cardiac-death/1.0.1/mil_outputs_survival_emb256_SCD"
+CSV_PATH="../../../../local3/sswee/music_download/physionet.org/files/music-sudden-cardiac-death/1.0.1/music_patient_folds_5cv_survival_SCD_time.csv"
+OUTPUT_DIR="../../../../local3/sswee/music_download/physionet.org/files/music-sudden-cardiac-death/1.0.1/mil_outputs_survival_emb256_time_SCD"
 
 # Training hyperparameters
 EPOCHS=30

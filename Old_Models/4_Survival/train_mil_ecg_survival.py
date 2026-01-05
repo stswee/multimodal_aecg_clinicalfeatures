@@ -41,6 +41,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
+from lifelines.statistics import logrank_test
+import json
 
 # =========================================================
 # Logging
@@ -340,6 +342,69 @@ def train_epoch_survival(
     logging.info(f"Epoch {epoch+1}/{total_epochs} | Train Cox loss: {mean_loss:.4f}")
     return mean_loss
 
+def truncate_at_horizon(times, events, horizon):
+    """
+    Administrative censoring at fixed horizon.
+    """
+    times = np.asarray(times, dtype=float)
+    events = np.asarray(events, dtype=bool)
+
+    t = np.minimum(times, horizon)
+    e = events & (times <= horizon)
+    return t, e
+
+
+def find_best_cutpoint_logrank(
+    risks,
+    times,
+    events,
+    horizon=1460,
+    min_frac=0.10,
+    grid_size=200,
+):
+    """
+    Find cutoff maximizing log-rank statistic.
+    Returns dict with cutoff and diagnostics.
+    """
+    times, events = truncate_at_horizon(times, events, horizon)
+
+    n = len(risks)
+    qs = np.linspace(min_frac, 1.0 - min_frac, grid_size)
+    cuts = np.unique(np.quantile(risks, qs))
+
+    best = {
+        "cutoff": None,
+        "chi2": -np.inf,
+        "p_value": None,
+        "n_low": None,
+        "n_high": None,
+    }
+
+    for c in cuts:
+        high = risks >= c
+        n_high = int(high.sum())
+        n_low = int((~high).sum())
+
+        if n_high < min_frac * n or n_low < min_frac * n:
+            continue
+
+        res = logrank_test(
+            times[high], times[~high],
+            event_observed_A=events[high],
+            event_observed_B=events[~high],
+        )
+
+        if res.test_statistic > best["chi2"]:
+            best.update({
+                "cutoff": float(c),
+                "chi2": float(res.test_statistic),
+                "p_value": float(res.p_value),
+                "n_low": n_low,
+                "n_high": n_high,
+            })
+
+    return best
+
 
 # =========================================================
 # Main
@@ -475,6 +540,55 @@ def main():
             logging.info(
                 f"New BEST model saved at epoch {epoch+1} (C-index={val_cindex:.4f})"
             )
+
+    # =========================================================
+    # Post-training: learn data-driven cutoff on TRAIN set
+    # =========================================================
+    logging.info("Estimating data-driven risk cutoff on training set...")
+    
+    # Reload best model
+    best_ckpt = output_dir / "mil_model_best_cindex.pt"
+    model.load_state_dict(torch.load(best_ckpt, map_location=device))
+    model.eval()
+    
+    # Compute TRAIN risks
+    train_risks, train_times, train_events = [], [], []
+    
+    with torch.no_grad():
+        for segments_list, times, events, _ in train_loader:
+            for i in range(len(segments_list)):
+                seg = segments_list[i].to(device)
+                risk, _, _ = model(seg)
+                train_risks.append(float(risk.item()))
+                train_times.append(float(times[i].item()))
+                train_events.append(float(events[i].item()))
+    
+    train_risks = np.asarray(train_risks, dtype=float)
+    train_times = np.asarray(train_times, dtype=float)
+    train_events = np.asarray(train_events, dtype=bool)
+    
+    # Ensure direction: higher = higher risk
+    corr = np.corrcoef(train_risks, train_events.astype(int))[0, 1]
+    if corr < 0:
+        logging.info("Flipping risk sign so higher = higher risk")
+        train_risks = -train_risks
+    
+    # Find cutoff (4-year estimand)
+    cut_info = find_best_cutpoint_logrank(
+        risks=train_risks,
+        times=train_times,
+        events=train_events,
+        horizon=1460,
+        min_frac=0.10,
+    )
+    
+    # Save cutoff
+    cut_path = output_dir / "risk_cutoff.json"
+    with open(cut_path, "w") as f:
+        json.dump(cut_info, f, indent=2)
+    
+    logging.info(f"Saved risk cutoff to {cut_path}")
+    logging.info(f"Cutoff summary: {cut_info}")
 
     logging.info(
         f"Training complete. Best validation C-index = {best_cindex:.4f} "

@@ -1,0 +1,13 @@
+Using the patient information below, assess the plausibility of the following
+cardiac outcome mechanisms without making definitive predictions:
+
+1. Sudden cardiac death (arrhythmic mechanism)
+2. Pump failure death (progressive heart failure mechanism)
+
+For each mechanism:
+- Indicate whether the available evidence is Strong, Weak, or Insufficient
+- Provide a brief clinical justification
+- Note key uncertainty or missing information
+
+Patient information:
+{{CLINICAL_NOTE}}

@@ -51,7 +51,7 @@ def extract_numeric_patient_id(pid_raw):
 def generate_window_indices(input_dir, output_dir, fs=200, window_sec=30):
     """Scan preprocessed ECGs and compute window start indices."""
     os.makedirs(output_dir, exist_ok=True)
-    output_csv = os.path.join(output_dir, "window_index_metadata.csv")
+    output_csv = os.path.join(output_dir, "window_index_metadata_HRV.csv")
 
     win_len = fs * window_sec
     npz_files = [f for f in os.listdir(input_dir) if f.endswith(".npz")]
