@@ -72,7 +72,8 @@ def set_seed(seed: int):
 
 class ProjectedConcatMultiHead(nn.Module):
     """
-    Project both modalities to 128-d, then concatenate.
+    Project both modalities to proj_dim, then concatenate.
+    Fusion trunk depth is configurable.
     """
 
     def __init__(
@@ -82,10 +83,14 @@ class ProjectedConcatMultiHead(nn.Module):
         proj_dim: int = 128,
         hidden_dim: int = 128,
         dropout: float = 0.2,
+        num_layers: int = 1,
     ):
         super().__init__()
 
-        # Separate projections
+        # -------------------------------------------------
+        # Separate projections (kept shallow intentionally)
+        # -------------------------------------------------
+
         self.ecg_proj = nn.Sequential(
             nn.LayerNorm(ecg_dim),
             nn.Linear(ecg_dim, proj_dim),
@@ -100,13 +105,22 @@ class ProjectedConcatMultiHead(nn.Module):
 
         fusion_dim = proj_dim * 2
 
-        # Shared trunk
-        self.trunk = nn.Sequential(
-            nn.LayerNorm(fusion_dim),
-            nn.Linear(fusion_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-        )
+        # -------------------------------------------------
+        # Configurable fusion trunk
+        # -------------------------------------------------
+
+        layers = []
+        in_dim = fusion_dim
+
+        layers.append(nn.LayerNorm(fusion_dim))
+
+        for _ in range(num_layers):
+            layers.append(nn.Linear(in_dim, hidden_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            in_dim = hidden_dim
+
+        self.trunk = nn.Sequential(*layers)
 
         self.head_scd = nn.Linear(hidden_dim, 1)
         self.head_pfd = nn.Linear(hidden_dim, 1)
@@ -183,6 +197,8 @@ def main():
     parser.add_argument("--proj_dim", type=int, default=128)
     parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--dropout", type=float, default=0.2)
+    parser.add_argument("--num_layers", type=int, default=1,
+                    help="Number of MLP layers in fusion trunk")
     parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
@@ -233,6 +249,7 @@ def main():
         proj_dim=args.proj_dim,
         hidden_dim=args.hidden_dim,
         dropout=args.dropout,
+        num_layers=args.num_layers,
     ).to(device)
 
     optimizer = torch.optim.Adam(

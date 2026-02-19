@@ -72,15 +72,28 @@ class ConcatMultiHead(nn.Module):
     Input dim = ECG_dim + Text_dim (e.g., 128 + 64 = 192)
     """
 
-    def __init__(self, input_dim: int, hidden_dim: int = 128, dropout: float = 0.2):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int = 128,
+        dropout: float = 0.2,
+        num_layers: int = 1,
+    ):
         super().__init__()
 
-        self.trunk = nn.Sequential(
-            nn.LayerNorm(input_dim),
-            nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-        )
+        layers = []
+        in_dim = input_dim
+
+        # Always start with LayerNorm
+        layers.append(nn.LayerNorm(input_dim))
+
+        for i in range(num_layers):
+            layers.append(nn.Linear(in_dim, hidden_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            in_dim = hidden_dim
+
+        self.trunk = nn.Sequential(*layers)
 
         self.head_scd = nn.Linear(hidden_dim, 1)
         self.head_pfd = nn.Linear(hidden_dim, 1)
@@ -92,6 +105,7 @@ class ConcatMultiHead(nn.Module):
             self.head_pfd(z).squeeze(-1),
             z,
         )
+
 
 # =========================================================
 # Evaluation
@@ -147,6 +161,8 @@ def main():
     parser.add_argument("--weight_decay", type=float, default=1e-5)
     parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--dropout", type=float, default=0.2)
+    parser.add_argument("--num_layers", type=int, default=1,
+                    help="Number of MLP layers in trunk")
     parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
@@ -192,6 +208,7 @@ def main():
         input_dim=input_dim,
         hidden_dim=args.hidden_dim,
         dropout=args.dropout,
+        num_layers=args.num_layers,
     ).to(device)
 
     optimizer = torch.optim.Adam(

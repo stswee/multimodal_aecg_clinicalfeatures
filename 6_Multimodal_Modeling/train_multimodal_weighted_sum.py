@@ -83,6 +83,7 @@ class WeightedSumMultiHead(nn.Module):
         proj_dim: int = 128,
         hidden_dim: int = 128,
         dropout: float = 0.2,
+        num_layers: int = 1,
     ):
         super().__init__()
 
@@ -102,13 +103,19 @@ class WeightedSumMultiHead(nn.Module):
         # Learnable scalar weight
         self.alpha = nn.Parameter(torch.tensor(0.0))  # sigmoid(alpha) -> a
 
-        # Shared trunk
-        self.trunk = nn.Sequential(
-            nn.LayerNorm(proj_dim),
-            nn.Linear(proj_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-        )
+        # Configurable fusion trunk
+        layers = []
+        in_dim = proj_dim
+
+        layers.append(nn.LayerNorm(proj_dim))
+
+        for _ in range(num_layers):
+            layers.append(nn.Linear(in_dim, hidden_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            in_dim = hidden_dim
+
+        self.trunk = nn.Sequential(*layers)
 
         self.head_scd = nn.Linear(hidden_dim, 1)
         self.head_pfd = nn.Linear(hidden_dim, 1)
@@ -185,6 +192,8 @@ def main():
     parser.add_argument("--proj_dim", type=int, default=128)
     parser.add_argument("--hidden_dim", type=int, default=128)
     parser.add_argument("--dropout", type=float, default=0.2)
+    parser.add_argument("--num_layers", type=int, default=1,
+                    help="Number of MLP layers in fusion trunk")
     parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
@@ -234,6 +243,7 @@ def main():
         proj_dim=args.proj_dim,
         hidden_dim=args.hidden_dim,
         dropout=args.dropout,
+        num_layers=args.num_layers,
     ).to(device)
 
     optimizer = torch.optim.Adam(
