@@ -20,19 +20,19 @@
 
 # ---------------- USER CONFIG ----------------
 
-ECG_EMB_DIR="../../music/ecg_embeddings"
-TEXT_EMB_DIR="../../music/text_shared_embeddings"
+ECG_EMB_DIR="../../music/best_ecg_embeddings"
+TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
 
-OUTPUT_DIR="../../music/best_results/vectorgating_embeddings"
+OUTPUT_DIR="../../music/best_results/vectorgating_embeddings_LLaMA8B_BioBERT"
 
 EPOCHS=100
 LR=1e-3
-WEIGHT_DECAY=1e-5
+WEIGHT_DECAY=0
 
 PROJ_DIM=128
 HIDDEN_DIM=128
-DROPOUT=0
-LAYERS=2
+DROPOUT=0.4
+LAYERS=1
 
 GPU=5
 SESSION_NAME="multimodal_vector_gating"

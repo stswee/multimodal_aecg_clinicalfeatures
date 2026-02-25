@@ -13,18 +13,18 @@
 
 # ---------------- USER CONFIG ----------------
 
-ECG_EMB_DIR="../../music/ecg_embeddings"
-TEXT_EMB_DIR="../../music/text_shared_embeddings"
+ECG_EMB_DIR="../../music/best_ecg_embeddings"
+TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
 
-OUTPUT_DIR="../../music/best_results/directconcat_embeddings"
+OUTPUT_DIR="../../music/best_results/directconcat_embeddings_LLaMA8B_BioBERT"
 
 EPOCHS=100
 LR=1e-3
-WEIGHT_DECAY=0
+WEIGHT_DECAY=1e-5
 
-HIDDEN_DIM=128
-DROPOUT=0.4
-LAYERS=1
+HIDDEN_DIM=256
+DROPOUT=0.2
+LAYERS=2
 
 
 GPU=5

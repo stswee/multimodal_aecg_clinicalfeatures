@@ -13,8 +13,8 @@
 EMBEDDING_ROOT="../../music/lm_embeddings"
 FOLD_CSV="../../music/music_patient_folds_5cv.csv"
 
-OUTPUT_DIR="../../music/best_results/text_embeddings"
-TEXT_EMB_DIR="../../music/text_shared_embeddings"
+OUTPUT_DIR="../../music/best_results/text_embeddings_LLaMA8B_BioBERT"
+TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
 
 EPOCHS=100
 LR=5e-3
@@ -23,9 +23,10 @@ WEIGHT_DECAY=1e-4
 LLM="LLaMA8B"
 LM="BioBERT"
 
+
 LAYERS=2
 HIDDEN=64
-DROPOUT=0.0
+DROPOUT=0
 
 GPU=5
 SESSION_NAME="text_shared_embeddings"
