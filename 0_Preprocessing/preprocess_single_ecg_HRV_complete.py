@@ -23,10 +23,6 @@ import time
 import os
 import neurokit2 as nk
 
-
-# -------------------------------------------------------------
-# Normalize record ID
-# -------------------------------------------------------------
 def normalize_record_id(record_str):
     record_str = record_str.strip()
 
@@ -39,28 +35,16 @@ def normalize_record_id(record_str):
     except ValueError:
         raise ValueError(f"Invalid record ID format: {record_str}")
 
-
-# -------------------------------------------------------------
-# Bandpass filter
-# -------------------------------------------------------------
 def bandpass_filter(signal, fs, lowcut=0.5, highcut=40, order=4):
     nyquist = 0.5 * fs
     b, a = sp.butter(order, [lowcut / nyquist, highcut / nyquist], btype="band")
     return sp.filtfilt(b, a, signal)
 
-
-# -------------------------------------------------------------
-# Baseline correction
-# -------------------------------------------------------------
 def baseline_correction(signal, fs, window_sec=0.8):
     kernel = int(window_sec * fs // 2 * 2 + 1)
     baseline = sp.medfilt(signal, kernel_size=kernel)
     return signal - baseline
 
-
-# -------------------------------------------------------------
-# Preprocess one ECG (FULL, SINGLE-PASS)
-# -------------------------------------------------------------
 def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
 
     meta = {
@@ -70,9 +54,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         "skip_seconds": skip_seconds,
     }
 
-    # ---------------------------------------------------------
-    # Normalize record ID
-    # ---------------------------------------------------------
     try:
         record_id, record_num_int = normalize_record_id(record_number_raw)
         meta["record_id"] = record_id
@@ -88,9 +69,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         meta["error_msg"] = "Missing .hea or .dat file"
         return meta
 
-    # ---------------------------------------------------------
-    # Load WFDB
-    # ---------------------------------------------------------
     try:
         t0 = time.time()
         record = wfdb.rdrecord(os.path.join(base_path, record_id))
@@ -104,17 +82,11 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         meta["error_msg"] = f"Loading failure: {e}"
         return meta
 
-    # ---------------------------------------------------------
-    # Trim
-    # ---------------------------------------------------------
     skip_samples = int(skip_seconds * fs)
     if skip_samples > 0:
         signal = signal[skip_samples:]
     meta["post_trim_samples"] = len(signal)
 
-    # ---------------------------------------------------------
-    # Bandpass filter
-    # ---------------------------------------------------------
     try:
         t1 = time.time()
         filtered = bandpass_filter(signal, fs)
@@ -124,9 +96,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         meta["error_msg"] = f"Filtering failure: {e}"
         return meta
 
-    # ---------------------------------------------------------
-    # Baseline correction
-    # ---------------------------------------------------------
     try:
         t2 = time.time()
         cleaned = baseline_correction(filtered, fs)
@@ -138,9 +107,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
 
     cleaned = cleaned.astype(np.float32)
 
-    # ---------------------------------------------------------
-    # R-peak detection (ONCE)
-    # ---------------------------------------------------------
     try:
         t3 = time.time()
         _, rpeaks = nk.ecg_peaks(cleaned, sampling_rate=fs)
@@ -152,9 +118,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         meta["error_msg"] = f"R-peak detection failure: {e}"
         return meta
 
-    # ---------------------------------------------------------
-    # NeuroKit full ECG processing (ONCE)
-    # ---------------------------------------------------------
     try:
         t4 = time.time()
         signals, _ = nk.ecg_process(cleaned, sampling_rate=fs)
@@ -164,9 +127,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
         meta["error_msg"] = f"NeuroKit processing failure: {e}"
         return meta
 
-    # ---------------------------------------------------------
-    # Save sliceable outputs
-    # ---------------------------------------------------------
     try:
         os.makedirs(output_path, exist_ok=True)
         save_path = os.path.join(output_path, f"{record_num_int:04d}_preprocessed.npz")
@@ -212,10 +172,6 @@ def preprocess_record(record_number_raw, base_path, output_path, skip_seconds):
 
     return meta
 
-
-# -------------------------------------------------------------
-# CLI
-# -------------------------------------------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Preprocess ECG with single-pass R-peak + NeuroKit processing"

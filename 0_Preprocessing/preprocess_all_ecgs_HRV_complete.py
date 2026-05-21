@@ -13,7 +13,7 @@ This script:
   - Runs full single-pass ECG preprocessing
   - Logs detailed metadata to CSV
 
-Designed for MUSIC / SHDB-AF scale processing.
+Designed for MUSIC processing.
 """
 
 import os
@@ -22,16 +22,11 @@ import time
 import argparse
 from tqdm import tqdm
 from datetime import datetime
-
-# UPDATED IMPORT (matches modified single-ECG script)
 from preprocess_single_ecg_HRV_complete import (
     preprocess_record,
     normalize_record_id,
 )
 
-# -------------------------------------------------------------
-# Discover WFDB records
-# -------------------------------------------------------------
 def discover_records(folder):
     hea_files = [f for f in os.listdir(folder) if f.endswith(".hea")]
 
@@ -46,10 +41,6 @@ def discover_records(folder):
 
     return sorted(records)
 
-
-# -------------------------------------------------------------
-# Initialize CSV metadata log
-# -------------------------------------------------------------
 def init_csv(csv_path):
     headers = [
         "timestamp",
@@ -76,10 +67,6 @@ def init_csv(csv_path):
         with open(csv_path, "w", newline="") as f:
             csv.writer(f).writerow(headers)
 
-
-# -------------------------------------------------------------
-# Append one record's metadata
-# -------------------------------------------------------------
 def log_metadata(csv_path, meta):
     with open(csv_path, "a", newline="") as f:
         writer = csv.writer(f)
@@ -104,10 +91,6 @@ def log_metadata(csv_path, meta):
             meta.get("error_msg", ""),
         ])
 
-
-# -------------------------------------------------------------
-# Main
-# -------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(
         description="Batch preprocess ECG Holter recordings (HRV-complete)."

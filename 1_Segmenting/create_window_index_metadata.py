@@ -2,7 +2,7 @@
 """
 create_window_index_metadata.py
 
-Goal:
+Purpose:
 -----
 Generate window_index_metadata.csv for on-the-fly ECG segmentation.
 
@@ -29,15 +29,6 @@ from tqdm import tqdm
 
 
 def extract_numeric_patient_id(pid_raw):
-    """
-    Extract trailing numeric digits from a patient id.
-    Examples:
-        "P0001" -> "0001"
-        "patient045" -> "045"
-        "REC_102" -> "102"
-        "003" -> "003"
-    If no digits found, return the original string.
-    """
     pid_raw = str(pid_raw)
 
     # Find trailing digits (robust across datasets)
@@ -49,7 +40,6 @@ def extract_numeric_patient_id(pid_raw):
 
 
 def generate_window_indices(input_dir, output_dir, fs=200, window_sec=30):
-    """Scan preprocessed ECGs and compute window start indices."""
     os.makedirs(output_dir, exist_ok=True)
     output_csv = os.path.join(output_dir, "window_index_metadata_HRV.csv")
 
@@ -80,7 +70,7 @@ def generate_window_indices(input_dir, output_dir, fs=200, window_sec=30):
 
                 starts = list(range(0, n_windows * win_len, win_len))
 
-                # --- Extract patient ID ---
+                # Extract patient ID
                 raw_pid = data.get("record_name", os.path.basename(fname).split("_")[0])
                 if isinstance(raw_pid, np.ndarray):
                     raw_pid = raw_pid.item()
