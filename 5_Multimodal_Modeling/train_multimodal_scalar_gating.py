@@ -2,30 +2,9 @@
 """
 train_multimodal_scalar_gating.py
 
-Scalar Gating Multimodal Fusion
-
-ECG embedding: 128-d
-Text embedding: auto-inferred
-
-Projection:
-    h_ECG  = W_e * z_ECG   -> proj_dim
-    h_Text = W_t * z_Text  -> proj_dim
-
-Scalar Gate:
-    g = sigmoid(alpha)   (learnable scalar)
-
-Fusion:
-    z = g*h_ECG + (1-g)*h_Text
-
-Two binary heads:
-- SCD vs Survivor
-- PFD vs Survivor
-
-Tracks:
-- Per-epoch metrics
-- Best checkpoint by mean AUC
-- Reports learned gate value g
-- Global CV summary CSV
+Scalar Gating Multimodal Fusion for:
+- ECG embeddings (128-d)
+- Text embeddings (64-d)
 """
 
 import argparse
@@ -43,10 +22,6 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     roc_auc_score,
 )
-
-# =========================================================
-# Logging / Seed
-# =========================================================
 
 def setup_logging(out_dir: Path):
     log_dir = out_dir / "logs"
@@ -67,10 +42,6 @@ def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-# =========================================================
-# Model
-# =========================================================
 
 class ScalarGatingMultiHead(nn.Module):
     """
@@ -138,10 +109,6 @@ class ScalarGatingMultiHead(nn.Module):
             g,
         )
 
-# =========================================================
-# Evaluation
-# =========================================================
-
 def eval_head_np(y_true, y_prob):
 
     y_true = np.asarray(y_true).astype(int)
@@ -160,10 +127,6 @@ def eval_head_np(y_true, y_prob):
 
     return float(acc), float(prec), float(rec), float(f1), float(auc)
 
-# =========================================================
-# Embedding Loader
-# =========================================================
-
 def load_npz(path):
     data = np.load(path)
     return (
@@ -172,10 +135,6 @@ def load_npz(path):
         data["y_scd"],
         data["y_pfd"],
     )
-
-# =========================================================
-# Main
-# =========================================================
 
 def main():
 
@@ -206,10 +165,6 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     setup_logging(out)
 
-    # -----------------------------------------------------
-    # Load embeddings
-    # -----------------------------------------------------
-
     ecg_fold_dir = args.ecg_embedding_dir / f"val_fold_{args.val_fold}"
     text_fold_dir = args.text_embedding_dir / f"val_fold_{args.val_fold}"
 
@@ -234,10 +189,6 @@ def main():
     logging.info(f"ECG dim: {ecg_dim}")
     logging.info(f"Text dim: {text_dim}")
 
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
-
     model = ScalarGatingMultiHead(
         ecg_dim=ecg_dim,
         text_dim=text_dim,
@@ -253,7 +204,6 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Class imbalance
     n_pos_scd = y_train[:, 0].sum()
     n_pos_pfd = y_train[:, 1].sum()
     n_neg = len(y_train) - ((y_train.sum(axis=1) > 0).sum())
@@ -276,10 +226,6 @@ def main():
     best_pfd_auc = np.nan
     best_gate = np.nan
 
-    # -----------------------------------------------------
-    # Training
-    # -----------------------------------------------------
-
     for epoch in range(args.epochs):
 
         model.train()
@@ -295,7 +241,6 @@ def main():
         loss.backward()
         optimizer.step()
 
-        # Validation
         model.eval()
         with torch.no_grad():
             z_scd, z_pfd, _, g_val = model(X_ecg_val_t, X_text_val_t)
@@ -331,10 +276,6 @@ def main():
                 },
                 out / "best_model.pt",
             )
-
-    # -----------------------------------------------------
-    # Save fold summary
-    # -----------------------------------------------------
 
     fold_summary = {
         "val_fold": args.val_fold,

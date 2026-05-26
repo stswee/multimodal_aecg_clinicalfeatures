@@ -2,26 +2,9 @@
 """
 train_multimodal_projected_concat.py
 
-Projected concatenation multimodal fusion.
-
-ECG embedding: 128-d
-Text embedding: e.g. 64-d (auto-inferred)
-
-Projection:
-    h_ECG  = W_e * z_ECG   -> 128-d
-    h_Text = W_t * z_Text  -> 128-d
-
-Fusion:
-    z = [h_ECG ; h_Text]   -> 256-d
-
-Two binary heads:
-- SCD vs Survivor
-- PFD vs Survivor
-
-Tracks:
-- Per-epoch metrics
-- Best checkpoint by mean AUC
-- Global CV summary CSV
+Projected concatenation multimodal fusion for:
+- ECG embeddings (128-d)
+- Text embeddings (64-d)
 """
 
 import argparse
@@ -41,10 +24,6 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     roc_auc_score,
 )
-
-# =========================================================
-# Logging / Seed
-# =========================================================
 
 def setup_logging(out_dir: Path):
     log_dir = out_dir / "logs"
@@ -66,10 +45,6 @@ def set_seed(seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-# =========================================================
-# Model
-# =========================================================
-
 class ProjectedConcatMultiHead(nn.Module):
     """
     Project both modalities to proj_dim, then concatenate.
@@ -87,10 +62,6 @@ class ProjectedConcatMultiHead(nn.Module):
     ):
         super().__init__()
 
-        # -------------------------------------------------
-        # Separate projections (kept shallow intentionally)
-        # -------------------------------------------------
-
         self.ecg_proj = nn.Sequential(
             nn.LayerNorm(ecg_dim),
             nn.Linear(ecg_dim, proj_dim),
@@ -104,10 +75,6 @@ class ProjectedConcatMultiHead(nn.Module):
         )
 
         fusion_dim = proj_dim * 2
-
-        # -------------------------------------------------
-        # Configurable fusion trunk
-        # -------------------------------------------------
 
         layers = []
         in_dim = fusion_dim
@@ -140,10 +107,6 @@ class ProjectedConcatMultiHead(nn.Module):
             z,
         )
 
-# =========================================================
-# Evaluation
-# =========================================================
-
 def eval_head_np(y_true, y_prob):
 
     y_true = np.asarray(y_true).astype(int)
@@ -162,10 +125,6 @@ def eval_head_np(y_true, y_prob):
 
     return float(acc), float(prec), float(rec), float(f1), float(auc)
 
-# =========================================================
-# Embedding Loader
-# =========================================================
-
 def load_npz(path):
     data = np.load(path)
     return (
@@ -174,10 +133,6 @@ def load_npz(path):
         data["y_scd"],
         data["y_pfd"],
     )
-
-# =========================================================
-# Main
-# =========================================================
 
 def main():
 
@@ -210,10 +165,6 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     setup_logging(out)
 
-    # -----------------------------------------------------
-    # Load embeddings
-    # -----------------------------------------------------
-
     ecg_fold_dir = args.ecg_embedding_dir / f"val_fold_{args.val_fold}"
     text_fold_dir = args.text_embedding_dir / f"val_fold_{args.val_fold}"
 
@@ -223,7 +174,6 @@ def main():
     text_train = load_npz(text_fold_dir / "train_embeddings.npz")
     text_val = load_npz(text_fold_dir / "val_embeddings.npz")
 
-    # Extract arrays
     X_ecg_train = ecg_train[1]
     X_ecg_val = ecg_val[1]
 
@@ -238,10 +188,6 @@ def main():
 
     logging.info(f"ECG dim: {ecg_dim}")
     logging.info(f"Text dim: {text_dim}")
-
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
 
     model = ProjectedConcatMultiHead(
         ecg_dim=ecg_dim,
@@ -258,7 +204,6 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Class imbalance
     n_pos_scd = y_train[:, 0].sum()
     n_pos_pfd = y_train[:, 1].sum()
     n_neg = len(y_train) - ((y_train.sum(axis=1) > 0).sum())
@@ -269,7 +214,6 @@ def main():
     crit_scd = nn.BCEWithLogitsLoss(pos_weight=w_scd)
     crit_pfd = nn.BCEWithLogitsLoss(pos_weight=w_pfd)
 
-    # Tensors
     X_ecg_train_t = torch.tensor(X_ecg_train, dtype=torch.float32).to(device)
     X_text_train_t = torch.tensor(X_text_train, dtype=torch.float32).to(device)
 
@@ -282,10 +226,6 @@ def main():
     best_epoch = -1
     best_scd_auc = np.nan
     best_pfd_auc = np.nan
-
-    # -----------------------------------------------------
-    # Training
-    # -----------------------------------------------------
 
     for epoch in range(args.epochs):
 
@@ -302,7 +242,6 @@ def main():
         loss.backward()
         optimizer.step()
 
-        # Validation
         model.eval()
         with torch.no_grad():
             z_scd, z_pfd, _ = model(X_ecg_val_t, X_text_val_t)
@@ -331,10 +270,6 @@ def main():
                 {"model_state_dict": model.state_dict()},
                 out / "best_model.pt",
             )
-
-    # -----------------------------------------------------
-    # Save fold summary
-    # -----------------------------------------------------
 
     fold_summary = {
         "val_fold": args.val_fold,

@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================
-# MULTIMODAL WAVE 2 (TOP-2 PER METHOD)
+# MULTIMODAL WAVE 2
 # Sequential, 1 GPU
 # ============================================================
 
 set -e
 export CUDA_VISIBLE_DEVICES=5
-
-# ---------------- USER CONFIG ----------------
 
 ECG_EMB_DIR="../../music/best_ecg_embeddings"
 TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
@@ -24,10 +22,6 @@ DROPOUTS=(0.0 0.2 0.4)
 mkdir -p "${BASE_OUTPUT_DIR}"
 
 FOLDS=(0 1 2 3 4)
-
-# ============================================================
-# 1) DIRECT CONCAT (2 configs)
-# ============================================================
 
 DC_CONFIGS=(
   "128 1"
@@ -64,10 +58,6 @@ do
     done
   done
 done
-
-# ============================================================
-# 2) METHODS WITH PROJECTION (8 configs total)
-# ============================================================
 
 run_projected_method () {
   METHOD_NAME=$1

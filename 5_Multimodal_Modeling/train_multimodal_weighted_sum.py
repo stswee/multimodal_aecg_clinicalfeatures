@@ -2,27 +2,9 @@
 """
 train_multimodal_weighted_sum.py
 
-Weighted Sum Fusion
-
-Projection:
-    h_ECG  = W_e * z_ECG   -> 128-d
-    h_Text = W_t * z_Text  -> 128-d
-
-Fusion:
-    z = a * h_ECG + (1 - a) * h_Text
-
-Where:
-    a = sigmoid(alpha), alpha is learnable scalar
-
-Two binary heads:
-- SCD vs Survivor
-- PFD vs Survivor
-
-Tracks:
-- Per-epoch metrics
-- Learned a and b values
-- Best checkpoint by mean AUC
-- Global CV summary CSV
+Weighted Sum Fusion for:
+- ECG embeddings (128-d)
+- Text embeddings (64-d)
 """
 
 import argparse
@@ -41,10 +23,6 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     roc_auc_score,
 )
-
-# =========================================================
-# Logging / Seed
-# =========================================================
 
 def setup_logging(out_dir: Path):
     log_dir = out_dir / "logs"
@@ -66,10 +44,6 @@ def set_seed(seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-# =========================================================
-# Model
-# =========================================================
-
 class WeightedSumMultiHead(nn.Module):
     """
     Weighted sum fusion:
@@ -87,7 +61,6 @@ class WeightedSumMultiHead(nn.Module):
     ):
         super().__init__()
 
-        # Projection layers
         self.ecg_proj = nn.Sequential(
             nn.LayerNorm(ecg_dim),
             nn.Linear(ecg_dim, proj_dim),
@@ -100,10 +73,8 @@ class WeightedSumMultiHead(nn.Module):
             nn.ReLU(),
         )
 
-        # Learnable scalar weight
         self.alpha = nn.Parameter(torch.tensor(0.0))  # sigmoid(alpha) -> a
 
-        # Configurable fusion trunk
         layers = []
         in_dim = proj_dim
 
@@ -137,10 +108,6 @@ class WeightedSumMultiHead(nn.Module):
             a,
         )
 
-# =========================================================
-# Evaluation
-# =========================================================
-
 def eval_head_np(y_true, y_prob):
 
     y_true = np.asarray(y_true).astype(int)
@@ -159,10 +126,6 @@ def eval_head_np(y_true, y_prob):
 
     return float(acc), float(prec), float(rec), float(f1), float(auc)
 
-# =========================================================
-# Embedding Loader
-# =========================================================
-
 def load_npz(path):
     data = np.load(path)
     return (
@@ -171,10 +134,6 @@ def load_npz(path):
         data["y_scd"],
         data["y_pfd"],
     )
-
-# =========================================================
-# Main
-# =========================================================
 
 def main():
 
@@ -205,10 +164,6 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     setup_logging(out)
 
-    # -----------------------------------------------------
-    # Load embeddings
-    # -----------------------------------------------------
-
     ecg_fold_dir = args.ecg_embedding_dir / f"val_fold_{args.val_fold}"
     text_fold_dir = args.text_embedding_dir / f"val_fold_{args.val_fold}"
 
@@ -233,10 +188,6 @@ def main():
     logging.info(f"ECG dim: {ecg_dim}")
     logging.info(f"Text dim: {text_dim}")
 
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
-
     model = WeightedSumMultiHead(
         ecg_dim=ecg_dim,
         text_dim=text_dim,
@@ -252,7 +203,6 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Class imbalance
     n_pos_scd = y_train[:, 0].sum()
     n_pos_pfd = y_train[:, 1].sum()
     n_neg = len(y_train) - ((y_train.sum(axis=1) > 0).sum())
@@ -263,7 +213,6 @@ def main():
     crit_scd = nn.BCEWithLogitsLoss(pos_weight=w_scd)
     crit_pfd = nn.BCEWithLogitsLoss(pos_weight=w_pfd)
 
-    # Tensors
     X_ecg_train_t = torch.tensor(X_ecg_train, dtype=torch.float32).to(device)
     X_text_train_t = torch.tensor(X_text_train, dtype=torch.float32).to(device)
     X_ecg_val_t = torch.tensor(X_ecg_val, dtype=torch.float32).to(device)
@@ -276,10 +225,6 @@ def main():
     best_pfd_auc = np.nan
     best_a = None
     best_b = None
-
-    # -----------------------------------------------------
-    # Training
-    # -----------------------------------------------------
 
     for epoch in range(args.epochs):
 
@@ -333,10 +278,6 @@ def main():
                 },
                 out / "best_model.pt",
             )
-
-    # -----------------------------------------------------
-    # Save fold summary
-    # -----------------------------------------------------
 
     fold_summary = {
         "val_fold": args.val_fold,

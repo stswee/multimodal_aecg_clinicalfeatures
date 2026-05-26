@@ -5,7 +5,6 @@
 
 set -e  # stop on error
 
-# ---------------- USER CONFIG ----------------
 CUDA_VISIBLE_DEVICES=0
 ECG_EMB_DIR="../../music/best_ecg_embeddings"
 TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
@@ -24,10 +23,6 @@ mkdir -p "${BASE_OUTPUT_DIR}"
 HIDDEN_DIMS=(128 256)
 PROJ_DIMS=(128 256)
 LAYERS=(1 2)
-
-# ============================================================
-# 1) DIRECT CONCAT (no projection)
-# ============================================================
 
 for H in "${HIDDEN_DIMS[@]}"
 do
@@ -57,10 +52,6 @@ do
     done
   done
 done
-
-# ============================================================
-# 2) METHODS WITH PROJECTION
-# ============================================================
 
 METHOD_NAMES=(
   projected_concat

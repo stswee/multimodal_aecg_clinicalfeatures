@@ -1,17 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # MULTIMODAL DIRECT CONCATENATION (ECG + TEXT)
-# No parameter sweep
-#
-# Fusion:
-#   z = [z_ECG ; z_Text]
-#
-# Classifier:
-#   hidden_dim=128
-#   dropout=0.2
 # ============================================================
-
-# ---------------- USER CONFIG ----------------
 
 ECG_EMB_DIR="../../music/ecg_embeddings"
 TEXT_EMB_DIR="../../music/text_shared_embeddings"

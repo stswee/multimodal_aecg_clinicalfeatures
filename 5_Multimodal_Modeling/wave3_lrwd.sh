@@ -7,8 +7,6 @@
 set -e
 export CUDA_VISIBLE_DEVICES=5
 
-# ---------------- USER CONFIG ----------------
-
 ECG_EMB_DIR="../../music/best_ecg_embeddings"
 TEXT_EMB_DIR="../../music/best_text_embeddings_LLaMA8B_BioBERT"
 
@@ -23,11 +21,6 @@ WDS=(0 1e-5)
 mkdir -p "${BASE_OUTPUT_DIR}"
 
 FOLDS=(0 1 2 3 4)
-
-# ============================================================
-# 1) DIRECT CONCAT (Best config from Wave 2)
-#    hidden=128, layers=1, dropout=0.4
-# ============================================================
 
 for LR in "${LRS[@]}"
 do
@@ -57,11 +50,6 @@ do
     done
   done
 done
-
-
-# ============================================================
-# 2) METHODS WITH PROJECTION
-# ============================================================
 
 run_projected_method () {
   METHOD_NAME=$1

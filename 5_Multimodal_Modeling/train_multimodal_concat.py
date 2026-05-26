@@ -5,19 +5,6 @@ train_multimodal_concat.py
 Direct concatenation multimodal fusion for:
 - ECG embeddings (128-d)
 - Text embeddings (64-d)
-
-Fusion:
-    z = [z_ECG ; z_Text]  -> 192-d
-
-Two binary heads:
-- SCD vs Survivor
-- PFD vs Survivor
-
-Tracks:
-- Per-epoch metrics
-- Best checkpoint by mean AUC
-- Global CV summary CSV
-- Optional saving of fused embeddings
 """
 
 import argparse
@@ -38,10 +25,6 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-# =========================================================
-# Logging / Seed
-# =========================================================
-
 def setup_logging(out_dir: Path):
     log_dir = out_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -61,10 +44,6 @@ def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-# =========================================================
-# Model
-# =========================================================
 
 class ConcatMultiHead(nn.Module):
     """
@@ -106,11 +85,6 @@ class ConcatMultiHead(nn.Module):
             z,
         )
 
-
-# =========================================================
-# Evaluation
-# =========================================================
-
 def eval_head_np(y_true, y_prob):
     y_true = np.asarray(y_true).astype(int)
     y_prob = np.asarray(y_prob).astype(float)
@@ -128,10 +102,6 @@ def eval_head_np(y_true, y_prob):
 
     return float(acc), float(prec), float(rec), float(f1), float(auc)
 
-# =========================================================
-# Embedding Loader
-# =========================================================
-
 def load_npz(path):
     data = np.load(path)
     return (
@@ -140,10 +110,6 @@ def load_npz(path):
         data["y_scd"],
         data["y_pfd"],
     )
-
-# =========================================================
-# Main
-# =========================================================
 
 def main():
 
@@ -174,10 +140,6 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     setup_logging(out)
 
-    # -----------------------------------------------------
-    # Load embeddings
-    # -----------------------------------------------------
-
     ecg_fold_dir = args.ecg_embedding_dir / f"val_fold_{args.val_fold}"
     text_fold_dir = args.text_embedding_dir / f"val_fold_{args.val_fold}"
 
@@ -187,10 +149,6 @@ def main():
     text_train = load_npz(text_fold_dir / "train_embeddings.npz")
     text_val = load_npz(text_fold_dir / "val_embeddings.npz")
 
-    # -----------------------------------------------------
-    # Align by patient order (assumes matching order)
-    # -----------------------------------------------------
-
     X_train = np.concatenate([ecg_train[1], text_train[1]], axis=1)
     X_val = np.concatenate([ecg_val[1], text_val[1]], axis=1)
 
@@ -199,10 +157,6 @@ def main():
 
     input_dim = X_train.shape[1]
     logging.info(f"Input fusion dim: {input_dim}")
-
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
 
     model = ConcatMultiHead(
         input_dim=input_dim,
@@ -217,7 +171,6 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Class imbalance
     n_pos_scd = y_train[:, 0].sum()
     n_pos_pfd = y_train[:, 1].sum()
     n_neg = len(y_train) - ((y_train.sum(axis=1) > 0).sum())
@@ -236,10 +189,6 @@ def main():
     best_epoch = -1
     best_scd_auc = np.nan
     best_pfd_auc = np.nan
-
-    # -----------------------------------------------------
-    # Training
-    # -----------------------------------------------------
 
     for epoch in range(args.epochs):
 
@@ -285,10 +234,6 @@ def main():
                 {"model_state_dict": model.state_dict()},
                 out / "best_model.pt",
             )
-
-    # -----------------------------------------------------
-    # Save fold summary
-    # -----------------------------------------------------
 
     fold_summary = {
         "val_fold": args.val_fold,

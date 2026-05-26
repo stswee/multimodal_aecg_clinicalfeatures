@@ -1,24 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # MULTIMODAL WEIGHTED SUM FUSION (ECG + TEXT)
-# No parameter sweep
-#
-# Projection:
-#   h_ECG  = W_e * z_ECG   -> 128
-#   h_Text = W_t * z_Text  -> 128
-#
-# Fusion:
-#   z = a * h_ECG + (1 - a) * h_Text
-#
-# where:
-#   a = sigmoid(alpha) (learnable scalar)
-#
-# Classifier:
-#   hidden_dim=128
-#   dropout=0.2
 # ============================================================
-
-# ---------------- USER CONFIG ----------------
 
 ECG_EMB_DIR="../../music/ecg_embeddings"
 TEXT_EMB_DIR="../../music/text_shared_embeddings"

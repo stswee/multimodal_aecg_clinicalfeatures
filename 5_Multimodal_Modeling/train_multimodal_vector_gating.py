@@ -2,32 +2,9 @@
 """
 train_multimodal_vector_gating.py
 
-Vector Gating Multimodal Fusion
-
-ECG embedding: 128-d
-Text embedding: auto-inferred
-
-Projection:
-    h_ECG  = W_e * z_ECG   -> proj_dim
-    h_Text = W_t * z_Text  -> proj_dim
-
-Vector Gate:
-    g = sigmoid(W_g * [h_ECG ; h_Text] + b_g)   -> (proj_dim,)
-    (computed per-patient)
-
-Fusion:
-    z = g ⊙ h_ECG + (1-g) ⊙ h_Text
-
-Two binary heads:
-- SCD vs Survivor
-- PFD vs Survivor
-
-Tracks:
-- Per-epoch metrics
-- Best checkpoint by mean AUC
-- Reports gate summary stats (mean/std/min/max across dims) at each epoch
-- Saves best gate stats (at best mean AUC) into checkpoint + fold summary
-- Global CV summary CSV
+Vector Gating Multimodal Fusion for:
+- ECG embeddings (128-d)
+- Text embeddings (64-d)
 """
 
 import argparse
@@ -45,10 +22,6 @@ from sklearn.metrics import (
     precision_recall_fscore_support,
     roc_auc_score,
 )
-
-# =========================================================
-# Logging / Seed
-# =========================================================
 
 def setup_logging(out_dir: Path):
     log_dir = out_dir / "logs"
@@ -69,10 +42,6 @@ def set_seed(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-# =========================================================
-# Model
-# =========================================================
 
 class VectorGatingMultiHead(nn.Module):
     """
@@ -95,10 +64,6 @@ class VectorGatingMultiHead(nn.Module):
     ):
         super().__init__()
 
-        # ---------------------------------------
-        # Projections
-        # ---------------------------------------
-
         self.ecg_proj = nn.Sequential(
             nn.LayerNorm(ecg_dim),
             nn.Linear(ecg_dim, proj_dim),
@@ -111,18 +76,10 @@ class VectorGatingMultiHead(nn.Module):
             nn.ReLU(),
         )
 
-        # ---------------------------------------
-        # Vector gate
-        # ---------------------------------------
-
         self.gate = nn.Sequential(
             nn.LayerNorm(proj_dim * 2),
             nn.Linear(proj_dim * 2, proj_dim),
         )
-
-        # ---------------------------------------
-        # Configurable fusion trunk
-        # ---------------------------------------
 
         layers = []
         in_dim = proj_dim
@@ -141,7 +98,7 @@ class VectorGatingMultiHead(nn.Module):
         self.head_pfd = nn.Linear(hidden_dim, 1)
 
     def forward(self, ecg, text):
-        h_ecg = self.ecg_proj(ecg)    # (B, proj_dim)
+        h_ecg = self.ecg_proj(ecg)    
         h_text = self.text_proj(text)
 
         gate_in = torch.cat([h_ecg, h_text], dim=1)
@@ -157,11 +114,6 @@ class VectorGatingMultiHead(nn.Module):
             z,
             g,
         )
-
-
-# =========================================================
-# Evaluation
-# =========================================================
 
 def eval_head_np(y_true, y_prob):
     y_true = np.asarray(y_true).astype(int)
@@ -180,10 +132,6 @@ def eval_head_np(y_true, y_prob):
 
     return float(acc), float(prec), float(rec), float(f1), float(auc)
 
-# =========================================================
-# Embedding Loader
-# =========================================================
-
 def load_npz(path: Path):
     data = np.load(path)
     return (
@@ -192,10 +140,6 @@ def load_npz(path: Path):
         data["y_scd"],
         data["y_pfd"],
     )
-
-# =========================================================
-# Gate summary helpers
-# =========================================================
 
 @torch.no_grad()
 def gate_stats(g: torch.Tensor) -> dict:
@@ -210,10 +154,6 @@ def gate_stats(g: torch.Tensor) -> dict:
         "g_min": float(g.min().item()),
         "g_max": float(g.max().item()),
     }
-
-# =========================================================
-# Main
-# =========================================================
 
 def main():
     parser = argparse.ArgumentParser()
@@ -243,10 +183,6 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     setup_logging(out)
 
-    # -----------------------------------------------------
-    # Load embeddings
-    # -----------------------------------------------------
-
     ecg_fold_dir = args.ecg_embedding_dir / f"val_fold_{args.val_fold}"
     text_fold_dir = args.text_embedding_dir / f"val_fold_{args.val_fold}"
 
@@ -272,10 +208,6 @@ def main():
     logging.info(f"Text dim: {text_dim}")
     logging.info(f"proj_dim: {args.proj_dim}")
 
-    # -----------------------------------------------------
-    # Model
-    # -----------------------------------------------------
-
     model = VectorGatingMultiHead(
         ecg_dim=ecg_dim,
         text_dim=text_dim,
@@ -291,7 +223,6 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Class imbalance (same pattern as your other scripts)
     n_pos_scd = y_train[:, 0].sum()
     n_pos_pfd = y_train[:, 1].sum()
     n_neg = len(y_train) - ((y_train.sum(axis=1) > 0).sum())
@@ -317,10 +248,6 @@ def main():
     best_pfd_auc = np.nan
     best_gate_stats = {"g_mean": np.nan, "g_std": np.nan, "g_min": np.nan, "g_max": np.nan}
 
-    # -----------------------------------------------------
-    # Training
-    # -----------------------------------------------------
-
     for epoch in range(args.epochs):
         model.train()
         optimizer.zero_grad()
@@ -335,7 +262,6 @@ def main():
         loss.backward()
         optimizer.step()
 
-        # Validation
         model.eval()
         with torch.no_grad():
             z_scd, z_pfd, _, g_val = model(X_ecg_val_t, X_text_val_t)
@@ -371,10 +297,6 @@ def main():
                 },
                 out / "best_model.pt",
             )
-
-    # -----------------------------------------------------
-    # Save fold summary
-    # -----------------------------------------------------
 
     fold_summary = {
         "val_fold": args.val_fold,
