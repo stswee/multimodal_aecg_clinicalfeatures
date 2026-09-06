@@ -30,9 +30,12 @@ TARBALL = DIST / f"{RELEASE_NAME}.tar.gz"
 TARBALL_SHA = DIST / f"{RELEASE_NAME}.tar.gz.sha256"
 MAX_FILE_BYTES = 50 * 1024 * 1024
 HANDOFF = "Codex_Project_Handoff.md"
+TEXT_SUFFIXES = {".csv", ".json", ".md", ".py", ".sh", ".log", ".yaml", ".yml", ".cff", ".sha256"}
 
 ROOTS = {
     "ECG_ROOT": MUSIC / "ecg_nested_4year_three_wave",
+    "JOINT_LLM_RESPONSES_ROOT": MUSIC / "llm_responses_4year_v2",
+    "DETAILED_LLM_RESPONSES_ROOT": MUSIC / "llm_responses_4year_v3_detailed",
     "JOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v2",
     "ENDPOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v3_endpoint_specific",
     "JOINT_MULTIMODAL_ROOT": MUSIC / "multimodal_nested_4year_v2",
@@ -48,101 +51,15 @@ ROOTS = {
 }
 
 REPORTING = [
-    "4_LLM_Modeling/LLM_Results_Reporting.txt",
-    "6_Multimodal_Modeling/Multimodal_Results_Reporting.txt",
-    "5_Benchmarking/Tabular_Results_Reporting.txt",
-    "7_Comparative_Analysis/Comparative_Results_Reporting.txt",
 ]
 
 CODE_ALLOWLIST = [
-    "0_Preprocessing/Preprocessing.ipynb",
-    "0_Preprocessing/preprocess_all_ecgs_HRV_complete.py",
-    "0_Preprocessing/preprocess_single_ecg_HRV_complete.py",
-    "0_Preprocessing/run_preprocess_all_ecgs_HRV_complete.sh",
-    "1_Segmenting/create_window_index_metadata.py",
-    "1_Segmenting/run_segment_HRV_complete.sh",
-    "1_Segmenting/run_segment_HRV_complete_parallel.sh",
-    "1_Segmenting/segment_all_patients_by_start_indices_HRV_complete.py",
-    "1_Segmenting/segment_all_patients_by_start_indices_HRV_complete_parallel.py",
-    "2_Labeling/Labeling_MUSIC_Updated.ipynb",
-    "3_ECG_Modeling/README.md",
-    "3_ECG_Modeling/train_tcn_mil_hrv_csv_multiclass_SCDPFD_complete.py",
-    "3_ECG_Modeling/calibrate_ecg_platt.py",
-    "3_ECG_Modeling/select_ecg_thresholds.py",
-    "3_ECG_Modeling/ecg_decision_curve_analysis.py",
-    "3_ECG_Modeling/ECG_Analysis.ipynb",
-    "3_ECG_Modeling/wave1_capacity.sh",
-    "4_LLM_Modeling/README.md",
-    "4_LLM_Modeling/LLM_Response_Verification.ipynb",
-    "4_LLM_Modeling/generate_llm_risks.py",
-    "4_LLM_Modeling/run_generate_LLM_risks.sh",
-    "4_LLM_Modeling/embed_llm_risks.py",
-    "4_LLM_Modeling/run_embed_llm_risks.sh",
-    "4_LLM_Modeling/train_text_embeddings_nested_cv.py",
-    "4_LLM_Modeling/run_text_embeddings_nested_cv.sh",
-    "4_LLM_Modeling/text_decision_curve_analysis.py",
-    "4_LLM_Modeling/plot_text_evaluation.py",
-    "4_LLM_Modeling/run_text_posthoc_evaluation.sh",
-    "6_Multimodal_Modeling/README.md",
-    "6_Multimodal_Modeling/train_multimodal_nested_cv.py",
-    "6_Multimodal_Modeling/run_multimodal_nested_cv.sh",
-    "6_Multimodal_Modeling/multimodal_posthoc_evaluation.py",
-    "6_Multimodal_Modeling/multimodal_text_shuffling_analysis.py",
-    "6_Multimodal_Modeling/plot_multimodal_evaluation.py",
-    "6_Multimodal_Modeling/run_multimodal_posthoc_evaluation.sh",
-    "6_Multimodal_Modeling/supplementary/literature_reduced/train_multimodal_literature_reduced_nested_cv.py",
-    "6_Multimodal_Modeling/supplementary/literature_reduced/run_multimodal_literature_reduced_nested_cv.sh",
-    "6_Multimodal_Modeling/supplementary/literature_reduced/multimodal_literature_reduced_posthoc.py",
-    "6_Multimodal_Modeling/supplementary/literature_reduced/plot_multimodal_literature_reduced.py",
-    "6_Multimodal_Modeling/supplementary/literature_reduced/run_multimodal_literature_reduced_posthoc.sh",
-    "5_Benchmarking/README.md",
-    "5_Benchmarking/train_tabular_nested_cv.py",
-    "5_Benchmarking/run_tabular_nested_cv.sh",
-    "5_Benchmarking/train_tabular_mlp_matched_nested_cv.py",
-    "5_Benchmarking/run_tabular_mlp_matched_nested_cv.sh",
-    "5_Benchmarking/tabular_posthoc_plots.py",
-    "5_Benchmarking/supplementary/literature_reduced/train_tabular_literature_reduced_nested_cv.py",
-    "5_Benchmarking/supplementary/literature_reduced/run_tabular_literature_reduced_nested_cv.sh",
-    "5_Benchmarking/supplementary/literature_reduced/train_tabular_mlp_literature_reduced_nested_cv.py",
-    "5_Benchmarking/supplementary/literature_reduced/run_tabular_mlp_literature_reduced_nested_cv.sh",
-    "5_Benchmarking/supplementary/literature_reduced/tabular_literature_reduced_posthoc_plots.py",
-    "5_Benchmarking/supplementary/literature_reduced/run_tabular_literature_reduced_posthoc.sh",
-    "7_Comparative_Analysis/generate_manuscript_figures_tables.py",
-    "7_Comparative_Analysis/run_generate_manuscript_figures_tables.sh",
-    "7_Comparative_Analysis/generate_multimodal_ecg_text_explanations.py",
-    "7_Comparative_Analysis/run_generate_multimodal_ecg_text_explanations.sh",
-    "7_Comparative_Analysis/run_endpoint_specific_comparative_analysis.py",
-    "7_Comparative_Analysis/run_endpoint_specific_comparative_analysis.sh",
 ]
 
 REPO_ARTIFACT_ROOTS = [
-    (
-        "7_Comparative_Analysis/manuscript_outputs",
-        Path("results/primary_joint_endpoint/comparative/manuscript_outputs"),
-    ),
-    (
-        "7_Comparative_Analysis/manuscript_outputs_v4_detailed",
-        Path("results/primary_joint_endpoint/comparative/manuscript_outputs_v4_detailed"),
-    ),
 ]
 
 REPO_ARTIFACT_ALLOWLIST = [
-    (
-        "7_Comparative_Analysis/Fig_ECG_PFD_0285.png",
-        Path("results/primary_joint_endpoint/comparative/patient_ecg_saliency/Fig_ECG_PFD_0285.png"),
-    ),
-    (
-        "7_Comparative_Analysis/Fig_ECG_PFD_0285.svg",
-        Path("results/primary_joint_endpoint/comparative/patient_ecg_saliency/Fig_ECG_PFD_0285.svg"),
-    ),
-    (
-        "7_Comparative_Analysis/Fig_ECG_SCD_0271.png",
-        Path("results/primary_joint_endpoint/comparative/patient_ecg_saliency/Fig_ECG_SCD_0271.png"),
-    ),
-    (
-        "7_Comparative_Analysis/Fig_ECG_SCD_0271.svg",
-        Path("results/primary_joint_endpoint/comparative/patient_ecg_saliency/Fig_ECG_SCD_0271.svg"),
-    ),
 ]
 
 RESULT_INCLUDE_PATTERNS = [
@@ -328,16 +245,110 @@ def portable_path(value: str | Path) -> str:
 
 
 def is_result_candidate(path: Path) -> bool:
+    return is_result_candidate_for_root("", path)
+
+
+def is_release_excluded(path: Path) -> bool:
+    if path.name == "README.md" or path.suffix.lower() == ".txt":
+        return True
     s = str(path)
-    if any(bit in s for bit in EXCLUDE_NAME_BITS):
+    if any(bit in s for bit in [".git", ".ipynb_checkpoints", "__pycache__", ".matplotlib", "archive"]):
+        return True
+    return False
+
+
+def path_parts_lower(path: Path) -> list[str]:
+    return [part.lower() for part in path.parts]
+
+
+def is_outer_fold_path(rel: Path) -> bool:
+    return any(re.fullmatch(r"outer_fold_\d+", part) for part in path_parts_lower(rel))
+
+
+def is_public_prediction_file(rel: Path) -> bool:
+    parts = path_parts_lower(rel)
+    name = rel.name.lower()
+    if any(part in {"selected_inner_folds", "tuning"} for part in parts):
         return False
-    name = path.name.lower()
-    return any(path.match(pat) for pat in RESULT_INCLUDE_PATTERNS) or name.endswith((".png", ".pdf"))
+    if any(bit in name for bit in ["inner_oof", "validation"]):
+        return False
+    if name == "outer_train_predictions.csv":
+        return False
+    if rel.suffix.lower() != ".csv":
+        return False
+    return (
+        "prediction" in name
+        or "predictions" in name
+        or "classification" in name
+        or "classifications" in name
+    )
+
+
+def is_final_checkpoint_file(rel: Path, *, allow_ecg: bool = False) -> bool:
+    parts = path_parts_lower(rel)
+    name = rel.name.lower()
+    if not allow_ecg and "ecg_nested_4year_three_wave" in str(rel).lower():
+        return False
+    if any(part in {"selected_inner_folds", "tuning"} for part in parts):
+        return False
+    if "final_models" not in parts or not is_outer_fold_path(rel):
+        return False
+    if parts[-2:] == ["outer_model", "checkpoint.pt"]:
+        return True
+    if name in {"checkpoint.pt", "model_bundle.joblib"}:
+        return True
+    return False
+
+
+def is_ecg_embedding_file(rel: Path) -> bool:
+    lower = str(rel).lower()
+    if rel.suffix.lower() != ".npz" or "embedding" not in lower:
+        return False
+    if any(bit in lower for bit in ["preprocessing", "selected_inner_folds", "tuning"]):
+        return False
+    return (
+        lower == "pooled_outer_test/pooled_outer_test_embeddings_evaluation_only.npz"
+        or (
+            is_outer_fold_path(rel)
+            and rel.name.lower() in {"outer_train_embeddings.npz", "outer_test_embeddings.npz"}
+        )
+    )
+
+
+def is_llm_response_file(rel: Path) -> bool:
+    parts = path_parts_lower(rel)
+    if any(part in {"logs", "run_metadata"} for part in parts):
+        return False
+    name = rel.name.lower()
+    if rel.suffix.lower() == ".csv":
+        return "responses" in name and "gpu_inventory" not in name
+    return rel.suffix.lower() == ".json" and "manifest" in name
+
+
+def is_result_candidate_for_root(root_name: str, path: Path) -> bool:
+    if is_release_excluded(path):
+        return False
+    rel = path.relative_to(ROOTS[root_name]) if root_name else path
+    if root_name == "ECG_ROOT":
+        return is_ecg_embedding_file(rel) or is_public_prediction_file(rel)
+    if root_name in {"JOINT_LLM_RESPONSES_ROOT", "DETAILED_LLM_RESPONSES_ROOT"}:
+        return is_llm_response_file(rel)
+    if root_name in {"JOINT_TEXT_ROOT", "ENDPOINT_TEXT_ROOT", "JOINT_MULTIMODAL_ROOT", "ENDPOINT_MULTIMODAL_ROOT"}:
+        return is_final_checkpoint_file(rel) or is_public_prediction_file(rel)
+    if root_name in {"TABULAR_ROOT", "TABULAR_MLP_ROOT", "REDUCED_TABULAR_ROOT", "REDUCED_TABULAR_MLP_ROOT", "REDUCED_MULTIMODAL_ROOT"}:
+        return is_final_checkpoint_file(rel) or is_public_prediction_file(rel)
+    if root_name in {"JOINT_COMPARATIVE_ROOT", "ENDPOINT_COMPARATIVE_ROOT", "REDUCED_COMPARATIVE_ROOT"}:
+        return is_public_prediction_file(rel)
+    return False
 
 
 def result_release_base(root_name: str) -> Path:
     mapping = {
         "ECG_ROOT": Path("results/primary_joint_endpoint/ecg"),
+        "JOINT_LLM_RESPONSES_ROOT": Path("results/primary_joint_endpoint/llm_responses"),
+        "DETAILED_LLM_RESPONSES_ROOT": Path("results/sensitivity_detailed/llm_responses"),
+        "JOINT_TEXT_EMBEDDINGS_ROOT": Path("results/primary_joint_endpoint/text_embeddings"),
+        "ENDPOINT_TEXT_EMBEDDINGS_ROOT": Path("results/sensitivity_endpoint_specific/text_embeddings"),
         "JOINT_TEXT_ROOT": Path("results/primary_joint_endpoint/text"),
         "JOINT_MULTIMODAL_ROOT": Path("results/primary_joint_endpoint/multimodal"),
         "JOINT_COMPARATIVE_ROOT": Path("results/primary_joint_endpoint/comparative"),
@@ -399,7 +410,7 @@ def inspect_csv(path: Path, rel: Path) -> tuple[bool, str]:
 
 
 def secret_scan(path: Path, rel: Path) -> list[str]:
-    if path.suffix.lower() in {".png", ".pdf", ".gz"}:
+    if path.suffix.lower() in {".png", ".pdf", ".gz", ".npz", ".pt", ".pth", ".ckpt"}:
         return []
     text = path.read_text(encoding="utf-8", errors="ignore")
     issues = []
@@ -434,7 +445,8 @@ class Builder:
         dest = STAGE / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         if dest.exists() and dest.read_bytes() != data:
-            raise SystemExit(f"Release path collision with different content: {rel}")
+            self.omissions.append(f"Release path collision kept existing file and skipped `{portable_path(src)}` -> `{rel}`")
+            return
         dest.write_bytes(data)
         self.record(Path(source) if source.startswith("/") else None, rel, notes=notes, source_hash=hashlib.sha256(data).hexdigest())
 
@@ -452,7 +464,7 @@ class Builder:
             notes = notes or "notebook outputs and execution counts stripped for release"
         else:
             data = src.read_bytes()
-        if sanitize and src.suffix.lower() in {".json", ".md", ".txt", ".csv", ".py", ".sh"}:
+        if sanitize and src.suffix.lower() in TEXT_SUFFIXES:
             text, used = sanitize_text(data.decode("utf-8", errors="replace"))
             data = text.encode("utf-8")
             for item in used:
@@ -463,8 +475,6 @@ class Builder:
             raise SystemExit(f"Release path collision with different content: {rel}")
         dest.write_bytes(data)
         patient_rows, csv_note = inspect_csv(dest, rel)
-        if patient_rows:
-            raise SystemExit(f"Privacy audit failed: {rel}: {csv_note}")
         self.record(src, rel, notes=notes or csv_note, source_manifest=source_manifest, source_hash=original_hash)
         if dest.suffix.lower() == ".csv":
             self.included_tables.append(str(rel))
@@ -494,11 +504,11 @@ class Builder:
 def make_docs(builder: Builder, root_notes: list[str]) -> None:
     now = datetime.now(timezone.utc).isoformat()
     docs = {
-        "README.md": f"""# MUSIC Four-Year ECG-LLM Release
+        "RELEASE_OVERVIEW.md": f"""# MUSIC Four-Year ECG-LLM Release
 
-This local release package contains shareable code, documentation, aggregate
-results, and publication figures for four-year SCD and PFD risk modeling using
-ECG, LLM-derived text, multimodal ECG-LLM fusion, and tabular benchmarks.
+This local release package contains the selected derived artifacts for
+four-year SCD and PFD risk modeling: ECG embeddings, LLM response CSVs,
+patient-level prediction CSVs, and final outer-fold model checkpoint artifacts.
 
 The primary/original-manuscript representation is the joint-endpoint v2
 analysis. Endpoint-specific v3 analyses are sensitivity/ablation analyses.
@@ -510,9 +520,9 @@ Analyses use a fixed four-year horizon, seed 42, five outer folds, four inner
 folds, and training-only preprocessing, tuning, selection, calibration, and
 threshold selection.
 
-Raw ECG recordings, clinical source CSVs, prompt CSVs, patient-level LLM
-responses, embeddings, model weights/checkpoints, patient-level predictions,
-fold assignments, and highlighted patient-response artifacts are not included.
+Raw ECG recordings, ECG preprocessing outputs, clinical source CSVs, prompt
+CSVs, source scripts, manuscript figures/tables, tuning outputs, and inner-fold
+checkpoints are not included.
 
 Verify files with `sha256sum -c SHA256SUMS`.
 """,
@@ -527,9 +537,13 @@ Maximum allowed individual included-file size: 50 MiB.
 Citation metadata is incomplete, so this release contains
 `CITATION.cff.template` rather than a valid `CITATION.cff`.
 
-Empty directories, archives, caches, notebooks with outputs, raw inputs,
-patient-level rows, embeddings, checkpoints, logs, and highlighted-response
-patient text artifacts are omitted.
+Empty directories, caches, notebook checkpoints, `README.md` files, `.txt`
+files, raw inputs, ECG preprocessing outputs, source scripts, manuscript output
+folders, tuning outputs, inner-fold checkpoints, and validation/inner-OOF
+predictions are omitted.
+
+Included result classes are ECG embeddings, LLM response CSVs, patient-level
+prediction CSVs, and final outer-fold model checkpoint artifacts.
 
 ## Result Root Checks
 {chr(10).join(root_notes)}
@@ -582,26 +596,24 @@ license: "TODO"
 """,
         "documentation/analysis_directory_map.md": """# Analysis Directory Map
 
-- `results/primary_joint_endpoint/`: primary/original-manuscript joint-endpoint ECG, text, multimodal, and comparative outputs.
-- `results/sensitivity_endpoint_specific/`: endpoint-specific v3 sensitivity/ablation outputs.
-- `results/benchmarks/`: tabular and matched MLP benchmark outputs.
-- `results/exploratory/`: exploratory decision-curve, shuffling, and attribution summaries when separately staged.
-- `results/supplementary/literature_reduced_continuous_lvef/`: post hoc literature-reduced continuous-LVEF analyses.
+- `results/primary_joint_endpoint/`: primary joint-endpoint ECG embeddings, LLM responses, predictions, and final checkpoints.
+- `results/sensitivity_endpoint_specific/`: endpoint-specific sensitivity predictions and final checkpoints.
+- `results/benchmarks/`: tabular benchmark predictions and final model bundles.
+- `results/supplementary/literature_reduced_continuous_lvef/`: post hoc literature-reduced continuous-LVEF predictions and final checkpoints, when available.
 """,
         "documentation/reviewer_requirements_map.md": """# Reviewer Requirements Map
 
-- Cohort construction: `code/2_Labeling/label_music_cohort.py`.
-- Canonical analysis code: `code/3_ECG_Modeling/` through `code/7_Comparative_Analysis/`.
-- Reporting summaries: `documentation/*_Results_Reporting.txt`.
-- Provenance and consolidation: `provenance/`.
+- Canonical analysis source is tracked in the GitHub repository, outside this release artifact bundle.
+- Included artifacts are derived from ECG modeling, LLM modeling, benchmarking, multimodal modeling, and comparative-analysis result roots.
+- Provenance and release manifests are in `provenance/`.
 - Environment notes: `environment/`.
 - File checksums: `SHA256SUMS`.
 """,
-        "environment/python_environment.txt": subprocess.run(["python3", "--version"], text=True, capture_output=True).stdout.strip() + "\n",
-        "environment/package_versions.txt": subprocess.run(["python3", "-m", "pip", "freeze"], text=True, capture_output=True).stdout,
-        "environment/model_revisions.txt": "Llama-3.1-8B-Instruct 0e9e39f249a16976918f6564b8830bc894c89659\nLlama-3.2-3B-Instruct 0cb88a4f764b7a12671c53f0838cd831a0843b95\n",
-        "environment/prompt_checksum.txt": "40644ed776353758c4c94bb752620f177244ac53e559d82538b7402a09f170e6\n",
-        "environment/software_and_hardware_summary.txt": subprocess.run(["uname", "-a"], text=True, capture_output=True).stdout,
+        "environment/python_environment.md": "```text\n" + subprocess.run(["python3", "--version"], text=True, capture_output=True).stdout.strip() + "\n```\n",
+        "environment/package_versions.md": "```text\n" + subprocess.run(["python3", "-m", "pip", "freeze"], text=True, capture_output=True).stdout + "```\n",
+        "environment/model_revisions.md": "```text\nLlama-3.1-8B-Instruct 0e9e39f249a16976918f6564b8830bc894c89659\nLlama-3.2-3B-Instruct 0cb88a4f764b7a12671c53f0838cd831a0843b95\n```\n",
+        "environment/prompt_checksum.sha256": "40644ed776353758c4c94bb752620f177244ac53e559d82538b7402a09f170e6\n",
+        "environment/software_and_hardware_summary.md": "```text\n" + subprocess.run(["uname", "-a"], text=True, capture_output=True).stdout + "```\n",
     }
     for rel, text in docs.items():
         clean, used = sanitize_text(text)
@@ -625,22 +637,17 @@ def stage_release() -> Builder:
         builder.copy_file(REPO / rel, Path("code") / rel, sanitize=True)
     for rel in REPORTING:
         builder.copy_file(REPO / rel, Path("documentation") / Path(rel).name, sanitize=True)
-    for rel in ["provenance/FILE_CONSOLIDATION_MAP.csv", "provenance/CONSOLIDATION_LOG.md"]:
-        builder.copy_file(REPO / rel, Path(rel), sanitize=True)
-    for src in sorted((REPO / "provenance/source_snapshots").rglob("*")):
-        if src.is_file():
-            builder.copy_file(src, Path("provenance/source_snapshots") / src.relative_to(REPO / "provenance/source_snapshots"), notes="frozen historical provenance; not path-sanitized")
     for root_name, root in ROOTS.items():
         base = result_release_base(root_name)
         for src in sorted(root.rglob("*")):
-            if not src.is_file() or not is_result_candidate(src):
+            if not src.is_file() or not is_result_candidate_for_root(root_name, src):
                 continue
             rel = base / src.relative_to(root)
             if src.suffix.lower() == ".json" and "manifest" in src.name.lower():
                 san_rel = Path("provenance/sanitized_manifests") / root_name.lower() / src.relative_to(root)
                 builder.copy_file(src, san_rel, sanitize=True, source_manifest=str(src))
             else:
-                builder.copy_file(src, rel, sanitize=src.suffix.lower() in {".json", ".md", ".txt", ".csv"}, source_manifest=str(root / ""))
+                builder.copy_file(src, rel, sanitize=src.suffix.lower() in TEXT_SUFFIXES, source_manifest=str(root / ""))
     for src_root_rel, dest_root in REPO_ARTIFACT_ROOTS:
         src_root = REPO / src_root_rel
         if not src_root.exists():
@@ -650,17 +657,15 @@ def stage_release() -> Builder:
             if not src.is_file() or not is_result_candidate(src):
                 continue
             rel = dest_root / src.relative_to(src_root)
-            builder.copy_file(src, rel, sanitize=src.suffix.lower() in {".json", ".md", ".txt", ".csv"})
+            builder.copy_file(src, rel, sanitize=src.suffix.lower() in TEXT_SUFFIXES)
     for src_rel, dest_rel in REPO_ARTIFACT_ALLOWLIST:
         src = REPO / src_rel
         if src.exists():
-            builder.copy_file(src, dest_rel, sanitize=src.suffix.lower() in {".json", ".md", ".txt", ".csv"})
+            builder.copy_file(src, dest_rel, sanitize=src.suffix.lower() in TEXT_SUFFIXES)
         else:
             builder.omissions.append(f"Repository artifact file missing: {src_rel}")
-    for src_rel in ["release/package_github_release.py", "release/run_package_github_release.sh"]:
-        builder.copy_file(REPO / src_rel, Path("code/release_tools") / Path(src_rel).name, sanitize=True)
     path_map = "# Path Sanitization Map\n\n" + ("\n".join(builder.sanitizations) if builder.sanitizations else "No replacements were needed.\n")
-    builder.add_text(path_map + "\n\nFrozen historical source snapshots are preserved byte-for-byte and may contain nonportable original paths.\n", Path("provenance/PATH_SANITIZATION_MAP.md"), "generated")
+    builder.add_text(path_map + "\n", Path("provenance/PATH_SANITIZATION_MAP.md"), "generated")
     return builder
 
 
@@ -684,13 +689,13 @@ def audit_tree(base: Path) -> list[str]:
         s = str(rel)
         if any(bit in s for bit in [".git", "__pycache__", ".ipynb_checkpoints"]):
             issues.append(f"{rel}: prohibited cache/vcs path")
+        if path.name == "README.md":
+            issues.append(f"{rel}: README.md files are excluded from the release")
+        if path.suffix.lower() == ".txt":
+            issues.append(f"{rel}: .txt files are excluded from the release")
         if path.stat().st_size > MAX_FILE_BYTES:
             issues.append(f"{rel}: exceeds 50 MiB")
-        if str(rel).startswith("results/") and re.search(r"(checkpoint|embedding|token_attributions|outer_test_predictions|pooled_inner_oof_predictions)", s, re.I):
-            issues.append(f"{rel}: prohibited filename category")
         patient_rows, note = inspect_csv(path, rel)
-        if patient_rows:
-            issues.append(f"{rel}: {note}")
         issues.extend(secret_scan(path, rel))
     return issues
 
