@@ -17,7 +17,7 @@ compare
 attribute-fold
     On one GPU, analyze both endpoint-specific ECG + full-LLM-text models for
     one untouched outer fold using integrated gradients through the frozen text
-    encoder and the prespecified direct-concatenation checkpoint. Includes refit-seed,
+    encoder and the fold-specific nested-selected fusion checkpoint. Includes refit-seed,
     input-variant, integration-step, masking, and randomization controls.
 attribute-aggregate
     Pool the five attribution folds, bootstrap summaries, draw diagnostic and
@@ -84,9 +84,9 @@ MODEL_LABELS = {
     "tabular": "Tabular only",
     "full_llm_text": "LLM text only",
     "deterministic_text": "Deterministic text only",
-    "ecg_full_llm": "ECG + LLM text (DC)",
-    "ecg_deterministic": "ECG + deterministic text (DC)",
-    "ecg_tabular": "ECG + tabular (DC)",
+    "ecg_full_llm": "ECG + LLM text",
+    "ecg_deterministic": "ECG + deterministic text",
+    "ecg_tabular": "ECG + tabular",
 }
 COLORS = {
     "ecg": "#3B6FB6", "tabular": "#D55E00", "full_llm_text": "#8E5EA2",
@@ -189,7 +189,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threshold_max", type=float, default=0.25)
     parser.add_argument("--threshold_step", type=float, default=0.0025)
     parser.add_argument("--calibration_groups", type=int, default=5)
-    parser.add_argument("--multimodal_arm", default="concatenation")
+    parser.add_argument("--multimodal_arm", default="selected_fusion")
     parser.add_argument("--dpi", type=int, default=600)
     parser.add_argument("--samples_per_class", type=int, default=6)
     parser.add_argument("--ig_steps", type=int, default=24)
@@ -644,7 +644,7 @@ def run_compare(args: argparse.Namespace) -> None:
     formatted=perf.copy(); formatted["formatted"]=formatted.apply(lambda r:f"{r.estimate:.3f} ({r.ci_lower:.3f}-{r.ci_upper:.3f})",axis=1); manuscript=formatted.pivot(index=["model","model_label"],columns=["outcome","metric"],values="formatted").reindex(MODELS,level="model").reset_index(); manuscript.columns=["__".join(x for x in c if x) if isinstance(c,tuple) else c for c in manuscript.columns]; atomic_csv(evaluation/"manuscript_ready_principal_performance_table.csv",manuscript)
     atomic_csv(figures/"discrimination_curve_plot_data.csv",plot_discrimination(standardized,figures,args.dpi)); points=calibration_points(standardized,args.calibration_groups); atomic_csv(figures/"calibration_plot_points.csv",points); plot_calibration(points,figures,args.dpi); plot_forest(primary,figures,args.dpi); decision_curves(standardized,args,figures); provenance(args)
     atomic_json(figures/"figure_manifest.json",{"completed":True,"created_at_utc":utc_now(),"source_predictions_sha256":sha256_file(evaluation/"standardized_principal_outer_test_predictions.csv"),"calibration_groups":args.calibration_groups,"decision_curve_threshold_range":[args.threshold_min,args.threshold_max],"decision_curve_interpretation":"exploratory; no intervention-specific range prespecified","bootstrap_replicates":args.bootstrap_replicates})
-    atomic_json(completion,{"completed":True,"created_at_utc":utc_now(),"analysis":"prediction-only endpoint-specific comparison","models":list(MODELS),"fixed_multimodal_arm":args.multimodal_arm,"eligible_patients":{"SCD":args.expected_controls+args.expected_scd,"PFD":args.expected_controls+args.expected_pfd},"events":{"SCD":args.expected_scd,"PFD":args.expected_pfd},"bootstrap_replicates":args.bootstrap_replicates,"seed":args.seed,"primary_comparison_family_tests":len(primary),"primary_multiplicity_adjustment":"Holm across all 72 prespecified model-outcome-metric comparisons","outer_test_outcomes_used_for_training_tuning_preprocessing_calibration_threshold_or_model_selection":False,"decision_curves":"exploratory pointwise paired-bootstrap analysis","script_sha256":sha256_file(Path(__file__).resolve()),"folds_sha256":sha256_file(args.folds_csv),"software":{"python":sys.version,"platform":platform.platform(),"numpy":np.__version__,"pandas":pd.__version__,"scipy":scipy.__version__,"scikit_learn":sklearn.__version__}})
+    atomic_json(completion,{"completed":True,"created_at_utc":utc_now(),"analysis":"prediction-only endpoint-specific comparison","models":list(MODELS),"multimodal_arm":args.multimodal_arm,"eligible_patients":{"SCD":args.expected_controls+args.expected_scd,"PFD":args.expected_controls+args.expected_pfd},"events":{"SCD":args.expected_scd,"PFD":args.expected_pfd},"bootstrap_replicates":args.bootstrap_replicates,"seed":args.seed,"primary_comparison_family_tests":len(primary),"primary_multiplicity_adjustment":"Holm across all 72 prespecified model-outcome-metric comparisons","outer_test_outcomes_used_for_training_tuning_preprocessing_calibration_threshold_or_model_selection":False,"decision_curves":"exploratory pointwise paired-bootstrap analysis","script_sha256":sha256_file(Path(__file__).resolve()),"folds_sha256":sha256_file(args.folds_csv),"software":{"python":sys.version,"platform":platform.platform(),"numpy":np.__version__,"pandas":pd.__version__,"scipy":scipy.__version__,"scikit_learn":sklearn.__version__}})
     print(f"Comparative analysis complete: {args.output_root}"); print(manuscript.to_string(index=False))
 
 
@@ -654,8 +654,22 @@ def mm_namespace(args: argparse.Namespace, mm) -> SimpleNamespace:
     return SimpleNamespace(stage="final",folds_csv=args.folds_csv,ecg_root=args.ecg_root,text_embedding_root=args.text_embedding_root,text_results_root=args.text_results_root,tabular_csv=args.subject_info_csv,output_root=args.multimodal_root,patient_id_col=mm.PATIENT_ID,scd_label_col=mm.SCD_LABEL,pfd_label_col=mm.PFD_LABEL,outer_fold_col=mm.OUTER_FOLD,outer_splits=5,inner_splits=4,expected_patients=args.expected_patients,expected_controls=args.expected_controls,expected_scd=args.expected_scd,expected_pfd=args.expected_pfd,expected_anticoagulant_yes=610,expected_anticoagulant_no=120,expected_text_pooling="cls",expected_text_max_length=args.max_length,expected_text_long_strategy="mean_chunks",expected_text_long_text_strategy="mean_chunks",expected_text_truncated_patient_count=0,expected_text_embedding_policy={"pooling":"cls","max_length":args.max_length,"long_text_strategy":"mean_chunks","truncated_patient_count":0})
 
 
+def resolved_fusion_arm(args: argparse.Namespace, task: str, fold: int, pair: str = "ecg_full_text") -> str:
+    if args.multimodal_arm != "selected_fusion":
+        return args.multimodal_arm
+    directory = args.multimodal_root / "tasks" / task / "final_models" / pair / f"outer_fold_{fold}"
+    selected_completion = directory / "arms" / "selected_fusion" / "run_complete.json"
+    if selected_completion.exists():
+        selected = json.loads(selected_completion.read_text(encoding="utf-8"))
+        method = selected.get("selected_from_method")
+        if method:
+            return str(method)
+    completion = json.loads((directory / "run_complete.json").read_text(encoding="utf-8"))
+    return str(completion["selected_overall_method"])
+
+
 def load_selected_multimodal(args, mm, task: str, fold: int, device):
-    directory=args.multimodal_root/"tasks"/task/"final_models"/"ecg_full_text"/f"outer_fold_{fold}"; method=args.multimodal_arm; arm=directory/"arms"/method; checkpoint=torch_load(arm/"checkpoint.pt")
+    directory=args.multimodal_root/"tasks"/task/"final_models"/"ecg_full_text"/f"outer_fold_{fold}"; method=resolved_fusion_arm(args,task,fold); arm=directory/"arms"/method; checkpoint=torch_load(arm/"checkpoint.pt")
     model=mm.FusionNetwork(checkpoint["ecg_dim"],checkpoint["second_dim"],checkpoint["config"]); model.load_state_dict(checkpoint["state_dict"]); model.to(device).eval(); return model,method,checkpoint
 
 
@@ -848,7 +862,7 @@ def aggregate_attribution(args: argparse.Namespace) -> None:
             for index,record in enumerate(candidates,1):
                 case_id=f"{outcome}-{('event' if label else 'control')}-{index}"; fig=highlighted_figure(record,case_id); save_figure(fig,highlight,case_id.lower(),220); selection.append({"case_id":case_id,"outcome":outcome,"label":label,"outer_fold":record["outer_fold"],"selection":"largest absolute distance from 0.5 among attributed cases; de-identified"})
     atomic_csv(highlight/"highlighted_case_selection.csv",pd.DataFrame(selection))
-    atomic_json(completion,{"completed":True,"created_at_utc":utc_now(),"pair":"ecg_full_text","tasks":list(TASKS),"folds":5,"patients_attributed":patients.groupby("outcome").patient_key.nunique().to_dict(),"fusion_arm":args.multimodal_arm,"method":"Integrated gradients through the frozen encoder mean-of-chunk CLS representation and the fixed direct-concatenation multimodal checkpoint","stability_controls":["outer-training refit seeds","meaning-preserving input variants","integration-step sensitivity"],"perturbation_controls":["high-attribution masking","low-attribution masking","random masking","classifier randomization"],"raw_attention_presented_as_explanation":False,"clinician_review_available":False,"clinical_validity_claimed":False,"interpretation":"Exploratory technical stability and model-linked fidelity only; highlighted text is not a validated clinical explanation."})
+    atomic_json(completion,{"completed":True,"created_at_utc":utc_now(),"pair":"ecg_full_text","tasks":list(TASKS),"folds":5,"patients_attributed":patients.groupby("outcome").patient_key.nunique().to_dict(),"fusion_arm":args.multimodal_arm,"method":"Integrated gradients through the frozen encoder mean-of-chunk CLS representation and the fold-specific selected multimodal checkpoint","stability_controls":["outer-training refit seeds","meaning-preserving input variants","integration-step sensitivity"],"perturbation_controls":["high-attribution masking","low-attribution masking","random masking","classifier randomization"],"raw_attention_presented_as_explanation":False,"clinician_review_available":False,"clinical_validity_claimed":False,"interpretation":"Exploratory technical stability and model-linked fidelity only; highlighted text is not a validated clinical explanation."})
     print(f"Attribution aggregation complete: {root}")
 
 
@@ -870,7 +884,7 @@ def preflight(args: argparse.Namespace) -> None:
     folds=read_locked_folds(args); mm=load_mm(args.multimodal_training_script); ns=mm_namespace(args,mm); mm_folds=mm.read_folds(ns,setup_copy=False); rows=[]
     for task in TASKS:
         for fold in range(5):
-            source,encoder,condition=mm.selected_text_spec(ns,fold,"ecg_full_text",task); directory=args.multimodal_root/"tasks"/task/"final_models"/"ecg_full_text"/f"outer_fold_{fold}"; method=args.multimodal_arm; checkpoint=directory/"arms"/method/"checkpoint.pt"; embedding=args.text_embedding_root/mm.stable_slug(source)/mm.stable_slug(encoder)/mm.stable_slug(condition)/"embeddings.npz"
+            source,encoder,condition=mm.selected_text_spec(ns,fold,"ecg_full_text",task); directory=args.multimodal_root/"tasks"/task/"final_models"/"ecg_full_text"/f"outer_fold_{fold}"; method=resolved_fusion_arm(args,task,fold); checkpoint=directory/"arms"/method/"checkpoint.pt"; embedding=args.text_embedding_root/mm.stable_slug(source)/mm.stable_slug(encoder)/mm.stable_slug(condition)/"embeddings.npz"
             embedding_manifest=embedding.with_name("manifest.json")
             for path in [checkpoint,embedding,embedding_manifest]:
                 if not path.exists(): raise FileNotFoundError(path)
@@ -878,7 +892,7 @@ def preflight(args: argparse.Namespace) -> None:
             observed_policy={"pooling":metadata.get("pooling"),"max_length":metadata.get("max_length"),"long_text_strategy":metadata.get("long_text_strategy"),"truncated_patient_count":metadata.get("truncated_patient_count")}
             expected_policy=ns.expected_text_embedding_policy
             if observed_policy != expected_policy: raise ValueError(f"Embedding policy mismatch in {embedding_manifest}: {observed_policy} vs {expected_policy}")
-            rows.append({"task":task,"outer_fold":fold,"source":source,"encoder":encoder,"condition":condition,"fusion_method":method,"checkpoint":str(checkpoint),"checkpoint_sha256":sha256_file(checkpoint),"embedding":str(embedding),"embedding_sha256":sha256_file(embedding)})
+            rows.append({"task":task,"outer_fold":fold,"source":source,"encoder":encoder,"condition":condition,"requested_fusion_arm":args.multimodal_arm,"resolved_fusion_method":method,"checkpoint":str(checkpoint),"checkpoint_sha256":sha256_file(checkpoint),"embedding":str(embedding),"embedding_sha256":sha256_file(embedding)})
     setup=args.output_root/"analysis_setup"; atomic_csv(setup/"attribution_preflight.csv",pd.DataFrame(rows)); atomic_json(setup/"preflight_manifest.json",{"completed":True,"created_at_utc":utc_now(),"patients":len(folds),"eligible_patients":{"SCD":args.expected_controls+args.expected_scd,"PFD":args.expected_controls+args.expected_pfd},"independent_binary_tasks":True,"competing_endpoints_excluded":True,"multimodal_attribution_pair":"ecg_full_text","raw_attention_used":False,"folds_sha256":sha256_file(args.folds_csv),"script_sha256":sha256_file(Path(__file__).resolve())}); print(f"Preflight complete: {setup}")
 
 

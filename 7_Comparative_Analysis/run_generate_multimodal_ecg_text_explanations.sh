@@ -36,8 +36,8 @@ STATUS_FILE="${LOG_DIR}/generate_multimodal_ecg_text_explanations.exit_status"
 MPLCONFIGDIR="${MPLCONFIGDIR:-/tmp/matplotlib-music-explain}"
 
 TARGETS=(
-    "SCD:concat"
-    "PFD:concat"
+    "SCD:selected_fusion"
+    "PFD:selected_fusion"
 )
 
 activate_environment() {

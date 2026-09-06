@@ -36,14 +36,14 @@ ROOTS = {
     "ECG_ROOT": MUSIC / "ecg_nested_4year_three_wave",
     "JOINT_LLM_RESPONSES_ROOT": MUSIC / "llm_responses_4year_v2",
     "DETAILED_LLM_RESPONSES_ROOT": MUSIC / "llm_responses_4year_v3_detailed",
-    "JOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v2",
-    "ENDPOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v3_endpoint_specific",
-    "JOINT_MULTIMODAL_ROOT": MUSIC / "multimodal_nested_4year_v2",
-    "ENDPOINT_MULTIMODAL_ROOT": MUSIC / "multimodal_nested_4year_v3_endpoint_specific",
+    "JOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v4_detailed",
+    "ENDPOINT_TEXT_ROOT": MUSIC / "text_nested_4year_v4_detailed",
+    "JOINT_MULTIMODAL_ROOT": MUSIC / "multimodal_nested_4year_v4_detailed",
+    "ENDPOINT_MULTIMODAL_ROOT": MUSIC / "multimodal_nested_4year_v4_detailed",
     "TABULAR_ROOT": MUSIC / "tabular_nested_4year_v2",
     "TABULAR_MLP_ROOT": MUSIC / "tabular_mlp_matched_4year_v2",
-    "JOINT_COMPARATIVE_ROOT": MUSIC / "comparative_analysis_4year_v2",
-    "ENDPOINT_COMPARATIVE_ROOT": MUSIC / "comparative_analysis_4year_v3_endpoint_specific",
+    "JOINT_COMPARATIVE_ROOT": MUSIC / "comparative_analysis_4year_v4_detailed_endpoint_specific",
+    "ENDPOINT_COMPARATIVE_ROOT": MUSIC / "comparative_analysis_4year_v4_detailed_endpoint_specific",
     "REDUCED_TABULAR_ROOT": MUSIC / "tabular_literature_reduced_continuous_lvef_4year_v1",
     "REDUCED_TABULAR_MLP_ROOT": MUSIC / "tabular_mlp_literature_reduced_continuous_lvef_4year_v1",
     "REDUCED_MULTIMODAL_ROOT": MUSIC / "multimodal_literature_reduced_continuous_lvef_4year_v1",
@@ -213,12 +213,15 @@ def verify_roots() -> list[str]:
                 if isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{64}", value):
                     KNOWN_HASHES.add(value.lower())
         notes.append(f"- `{name}`: exists; {len(manifests)} manifest files; {completed} expose `completed=true`.")
-    joint_dca = read_json(ROOTS["JOINT_COMPARATIVE_ROOT"] / "clinical_decision_curve_comparisons/exploratory_2_to_25_percent/decision_curve_comparison_manifest.json")
-    cohorts = joint_dca.get("cohorts", {})
-    if cohorts.get("SCD", {}).get("n") != 648 or cohorts.get("SCD", {}).get("events") != 71:
-        raise SystemExit("SCD cohort count check failed in joint decision-curve manifest")
-    if cohorts.get("PFD", {}).get("n") != 659 or cohorts.get("PFD", {}).get("events") != 82:
-        raise SystemExit("PFD cohort count check failed in joint decision-curve manifest")
+    comparative = read_json(ROOTS["JOINT_COMPARATIVE_ROOT"] / "evaluation/comparative_analysis_manifest.json")
+    cohorts = comparative.get("eligible_patients", {})
+    events = comparative.get("events", {})
+    if cohorts.get("SCD") != 648 or events.get("SCD") != 71:
+        raise SystemExit("SCD cohort count check failed in comparative manifest")
+    if cohorts.get("PFD") != 659 or events.get("PFD") != 82:
+        raise SystemExit("PFD cohort count check failed in comparative manifest")
+    if comparative.get("multimodal_arm") != "selected_fusion":
+        raise SystemExit("Comparative manifest is not using selected_fusion")
     return notes
 
 
@@ -510,9 +513,10 @@ This local release package contains the selected derived artifacts for
 four-year SCD and PFD risk modeling: ECG embeddings, LLM response CSVs,
 patient-level prediction CSVs, and final outer-fold model checkpoint artifacts.
 
-The primary/original-manuscript representation is the joint-endpoint v2
-analysis. Endpoint-specific v3 analyses are sensitivity/ablation analyses.
-Literature-reduced continuous-LVEF analyses are post hoc supplementary.
+The primary manuscript representation is the detailed-response v4
+endpoint-specific nested analysis. Multimodal primary results use the
+fold-specific nested-selected fusion arm. Literature-reduced continuous-LVEF
+analyses are post hoc supplementary.
 
 The cohort contains 730 patients: 577 controls, 71 SCD events, and 82 PFD
 events. Task cohorts use competing-endpoint exclusion: SCD N=648 and PFD N=659.
@@ -596,8 +600,8 @@ license: "TODO"
 """,
         "documentation/analysis_directory_map.md": """# Analysis Directory Map
 
-- `results/primary_joint_endpoint/`: primary joint-endpoint ECG embeddings, LLM responses, predictions, and final checkpoints.
-- `results/sensitivity_endpoint_specific/`: endpoint-specific sensitivity predictions and final checkpoints.
+- `results/primary_joint_endpoint/`: primary v4 endpoint-specific ECG embeddings, LLM responses, predictions, and final checkpoints.
+- `results/sensitivity_endpoint_specific/`: duplicate v4 endpoint-specific exports retained for continuity with the previous release layout.
 - `results/benchmarks/`: tabular benchmark predictions and final model bundles.
 - `results/supplementary/literature_reduced_continuous_lvef/`: post hoc literature-reduced continuous-LVEF predictions and final checkpoints, when available.
 """,

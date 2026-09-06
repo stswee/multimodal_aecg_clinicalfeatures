@@ -25,8 +25,8 @@ It generates, for selected validation folds and endpoint/fusion-method pairs:
 * text saliency HTML/CSV from the LLM response through the frozen language
   model, text classifier, and multimodal fusion checkpoint.
 
-The default targets use direct concatenation for both outcomes. Other saved
-fusion arms may be requested explicitly.
+The default targets use the fold-specific nested-selected fusion model for both
+outcomes. Other saved fusion arms may be requested explicitly.
 """
 
 import argparse
@@ -59,17 +59,20 @@ CURRENT_TEXT_RESULTS_ROOT = MUSIC_ROOT / "text_nested_4year_v4_detailed"
 CURRENT_MULTIMODAL_ROOT = MUSIC_ROOT / "multimodal_nested_4year_v4_detailed"
 CURRENT_EXPLANATION_ROOT = CURRENT_MULTIMODAL_ROOT / "explain_multimodal_ecg_text"
 
-METHOD_CHOICES = ("concat", "projectconcat", "vector_gating", "scalar_gating")
+METHOD_CHOICES = ("selected_fusion", "nested_selected", "concat", "projectconcat", "weighted_sum", "vector_gating", "scalar_gating")
 METHOD_TO_CURRENT_ARM = {
+    "selected_fusion": "selected_fusion",
+    "nested_selected": "selected_fusion",
     "concat": "concatenation",
     "projectconcat": "projected_concatenation",
+    "weighted_sum": "weighted_sum",
     "vector_gating": "vector_gating",
     "scalar_gating": "scalar_gating",
 }
 ENDPOINT_CHOICES = ("SCD", "PFD")
 DEFAULT_TARGETS = (
-    ("SCD", "concat"),
-    ("PFD", "concat"),
+    ("SCD", "selected_fusion"),
+    ("PFD", "selected_fusion"),
 )
 LM_CHECKPOINTS = {
     "BioBERT": "dmis-lab/biobert-base-cased-v1.1",
@@ -1053,6 +1056,13 @@ def build_current_fusion_model(mm_module, checkpoint_path: Path, device: torch.d
 
 def current_checkpoint_path(multimodal_root: Path, task: str, outer_fold: int, method: str) -> Path:
     arm = METHOD_TO_CURRENT_ARM[method]
+    if arm == "selected_fusion":
+        selected = multimodal_root / "tasks" / task / "final_models" / "ecg_full_text" / f"outer_fold_{outer_fold}" / "arms" / "selected_fusion" / "run_complete.json"
+        if selected.exists():
+            arm = json.loads(selected.read_text(encoding="utf-8"))["selected_from_method"]
+        else:
+            completion = multimodal_root / "tasks" / task / "final_models" / "ecg_full_text" / f"outer_fold_{outer_fold}" / "run_complete.json"
+            arm = json.loads(completion.read_text(encoding="utf-8"))["selected_overall_method"]
     return (
         multimodal_root
         / "tasks"
@@ -1419,6 +1429,7 @@ def main():
                 "endpoint": endpoint,
                 "method": method,
                 "current_multimodal_arm": METHOD_TO_CURRENT_ARM[method],
+                "resolved_fusion_method": checkpoint["config"]["fusion_method"],
                 "selection_mode": selection_mode,
                 "rank_within_target": rank,
                 "y_true": int(y_true[idx]),

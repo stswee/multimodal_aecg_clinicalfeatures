@@ -33,6 +33,8 @@ SESSION="${SESSION:-comparative_4year_v4_detailed_endpoint_specific}"
 LOG_DIR="${OUTPUT_ROOT}/launcher_logs"
 STATUS_DIR="${OUTPUT_ROOT}/launcher_status"
 OVERWRITE="${OVERWRITE:-0}"
+COMPARATIVE_MULTIMODAL_ARM="${COMPARATIVE_MULTIMODAL_ARM:-selected_fusion}"
+ATTRIBUTION_MULTIMODAL_ARM="${ATTRIBUTION_MULTIMODAL_ARM:-selected_fusion}"
 
 activate_environment() {
     if [[ ! -f "${CONDA_INIT}" ]]; then
@@ -72,7 +74,7 @@ python_args() {
         --threshold_min 0.02
         --threshold_max 0.25
         --threshold_step 0.0025
-        --multimodal_arm concatenation
+        --multimodal_arm "${MULTIMODAL_ARM:-${COMPARATIVE_MULTIMODAL_ARM}}"
         --calibration_groups 5
         --samples_per_class 6
         --ig_steps 24
@@ -111,6 +113,7 @@ run_compare_worker() {
 
 run_attribution_worker() {
     local fold="$1"
+    MULTIMODAL_ARM="${ATTRIBUTION_MULTIMODAL_ARM}"
     activate_environment
     python_args
     mkdir -p "${LOG_DIR}" "${STATUS_DIR}"
@@ -127,6 +130,7 @@ run_attribution_worker() {
 }
 
 run_finalizer() {
+    MULTIMODAL_ARM="${ATTRIBUTION_MULTIMODAL_ARM}"
     activate_environment
     python_args
     mkdir -p "${LOG_DIR}" "${STATUS_DIR}"
@@ -213,13 +217,13 @@ python -u "${PYTHON_SCRIPT}" --stage preflight "${PYTHON_ARGS[@]}" \
 find "${STATUS_DIR}" -maxdepth 1 -type f -name '*.status' -delete
 
 tmux new-session -d -s "${SESSION}" -n compare \
-    "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' bash '${BASH_SOURCE[0]}' _compare; exec bash"
+    "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' COMPARATIVE_MULTIMODAL_ARM='${COMPARATIVE_MULTIMODAL_ARM}' bash '${BASH_SOURCE[0]}' _compare; exec bash"
 for fold in 0 1 2 3 4; do
     tmux new-window -t "${SESSION}" -n "gpu${fold}" \
-        "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' bash '${BASH_SOURCE[0]}' _attribute '${fold}'; exec bash"
+        "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' ATTRIBUTION_MULTIMODAL_ARM='${ATTRIBUTION_MULTIMODAL_ARM}' bash '${BASH_SOURCE[0]}' _attribute '${fold}'; exec bash"
 done
 tmux new-window -t "${SESSION}" -n finalizer \
-    "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' bash '${BASH_SOURCE[0]}' _finalize; exec bash"
+    "env OVERWRITE='${OVERWRITE}' OUTPUT_ROOT='${OUTPUT_ROOT}' CONDA_ENV='${CONDA_ENV}' ATTRIBUTION_MULTIMODAL_ARM='${ATTRIBUTION_MULTIMODAL_ARM}' bash '${BASH_SOURCE[0]}' _finalize; exec bash"
 tmux select-window -t "${SESSION}:compare"
 
 echo
