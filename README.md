@@ -155,23 +155,9 @@ run_generate_multimodal_ecg_text_explanations.sh
 
 ## GitHub Release Package
 
-The local release builder stages source code, documentation, provenance, and shareable generated artifacts under:
-
-```bash
-dist/github_release/staging/music_four_year_ecg_llm_release/
-```
-
-and creates:
-
-```bash
-dist/github_release/music_four_year_ecg_llm_release.tar.gz
-dist/github_release/music_four_year_ecg_llm_release.tar.gz.sha256
-```
-
-Run:
-
-```bash
-release/run_package_github_release.sh
-```
-
-The release package excludes raw MUSIC data, generated caches, notebook checkpoints, archive folders, stale scripts, heavyweight model internals, and patient-level artifacts that are not intended for public release.
+This release package contains selected derived artifacts needed for reuse and review:
+- ECG embeddings
+- LLM-generated response CSVs
+- patient-level prediction and classification CSVs
+- final outer-fold model checkpoint artifacts
+- release manifest, checksums, and provenance documentation
